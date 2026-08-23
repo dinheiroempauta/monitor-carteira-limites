@@ -4,7 +4,7 @@
 - [x] T2 — Config: `config/quotas.yaml` (placeholder, a preencher pelo usuário
       ou pelo scraper)
 - [x] T3 — `src/monitor/config.py`: carregar e validar os YAML
-- [x] T4 — `src/monitor/prices.py`: cliente HG Brasil (`stock_price`)
+- [x] T4 — `src/monitor/prices.py`: cliente brapi.dev (`quote`)
 - [x] T5 — `src/monitor/allocation.py`: cálculo de status por banda, plano de
       venda/compra, sugestão de aporte
 - [x] T6 — `tests/test_allocation.py`: cobrir os 4 cenários do plano

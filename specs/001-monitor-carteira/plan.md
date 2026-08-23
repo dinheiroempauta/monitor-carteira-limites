@@ -3,7 +3,7 @@
 ## Stack
 
 - **Python 3.11+**, sem framework web (não há UI nesta v1).
-- `requests` para chamar a API HG Brasil e a API do Telegram.
+- `requests` para chamar a API brapi.dev e a API do Telegram.
 - `PyYAML` para configuração (`config/portfolio.yaml`, `config/quotas.yaml`).
 - `playwright` (Python) para o scraper opcional da B3.
 - `pytest` para testar a lógica de alocação (é a parte que envolve dinheiro
@@ -24,7 +24,7 @@ config/
 src/monitor/
   __init__.py
   config.py           # carrega/valida os YAML
-  prices.py           # cliente HG Brasil
+  prices.py           # cliente brapi.dev
   allocation.py       # cálculo de % atual, status de banda, plano de venda,
                        # sugestão de aporte
   telegram.py         # envio de mensagem via bot
@@ -69,7 +69,7 @@ holdings:
 ## Fluxo do `main.py`
 
 1. Carrega `portfolio.yaml` e `quotas.yaml`.
-2. Busca preços na HG Brasil para os tickers de `portfolio.yaml`.
+2. Busca preços na brapi.dev para os tickers de `portfolio.yaml`.
 3. Calcula, por ativo: valor, % atual, status (`ok` / `abaixo_da_banda` /
    `acima_da_banda`).
 4. Se houver algum fora da banda → gera plano de venda/compra (quantidade
@@ -102,7 +102,7 @@ holdings:
   `ENABLE_B3_SCRAPER=true`) instalar browsers do Playwright e rodar o
   scraper com `continue-on-error: true` → se `quotas.yaml` mudou, commit +
   push automático → rodar `main.py` com os secrets como env vars.
-- Secrets necessários no repo: `HGBRASIL_KEY`, `TELEGRAM_BOT_TOKEN`,
+- Secrets necessários no repo: `BRAPI_TOKEN`, `TELEGRAM_BOT_TOKEN`,
   `TELEGRAM_CHAT_ID` e, opcionalmente, `B3_CPF`/`B3_PASSWORD`.
 
 ## Testes

@@ -12,9 +12,9 @@ from monitor.telegram import TelegramSendError, send_message
 
 
 def main() -> int:
-    hgbrasil_key = os.environ.get("HGBRASIL_KEY")
-    if not hgbrasil_key:
-        print("Erro: variável de ambiente HGBRASIL_KEY não configurada.", file=sys.stderr)
+    brapi_token = os.environ.get("BRAPI_TOKEN")
+    if not brapi_token:
+        print("Erro: variável de ambiente BRAPI_TOKEN não configurada.", file=sys.stderr)
         return 1
 
     targets = load_portfolio()
@@ -22,7 +22,7 @@ def main() -> int:
     quotas_metadata = load_quotas_metadata()
 
     try:
-        prices = fetch_prices(list(targets.keys()), hgbrasil_key)
+        prices = fetch_prices(list(targets.keys()), brapi_token)
     except PriceFetchError as exc:
         print(f"Erro ao buscar cotações: {exc}", file=sys.stderr)
         return 1

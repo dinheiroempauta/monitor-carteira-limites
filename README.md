@@ -15,7 +15,7 @@ Documentação completa da spec/plano/tasks em
 2. `config/quotas.yaml` guarda a quantidade de cotas de cada ativo — é a
    sua posição atual. Pode ser atualizado manualmente ou pelo scraper
    experimental da B3 (veja abaixo).
-3. Todo dia, o workflow busca a cotação de cada ativo na API HG Brasil,
+3. Todo dia, o workflow busca a cotação de cada ativo na API brapi.dev,
    calcula o % atual de cada um e compara com a banda.
 4. Se algum ativo estourou a banda, manda um alerta de venda/compra pelo
    Telegram. Se está tudo dentro da banda, manda uma sugestão de aporte.
@@ -26,7 +26,7 @@ Em *Settings > Secrets and variables > Actions* do repositório, cadastre:
 
 | Secret | Para quê |
 |---|---|
-| `HGBRASIL_KEY` | chave da sua conta na API HG Brasil |
+| `BRAPI_TOKEN` | token gratuito da sua conta na [brapi.dev](https://brapi.dev/dashboard) (plano free: 15 mil requisições/mês, cobre FIIs e ETFs) |
 | `TELEGRAM_BOT_TOKEN` | token do bot que vai te avisar (crie um com o [@BotFather](https://t.me/BotFather)) |
 | `TELEGRAM_CHAT_ID` | id do chat/usuário que vai receber o alerta |
 | `B3_CPF` / `B3_PASSWORD` | opcional, só se for usar o scraper de posição da B3 |
@@ -72,7 +72,7 @@ seletores em `scripts/update_quotas_from_b3.py`.
 
 ```bash
 pip install -r requirements.txt
-export HGBRASIL_KEY=...
+export BRAPI_TOKEN=...
 export TELEGRAM_BOT_TOKEN=...   # opcional — sem isso, só imprime no terminal
 export TELEGRAM_CHAT_ID=...
 PYTHONPATH=src python -m monitor.main
