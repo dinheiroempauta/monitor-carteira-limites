@@ -12,7 +12,7 @@ jobs:
   monitor:
     runs-on: ubuntu-latest
     env:
-      HGBRASIL_KEY: ${{ secrets.HGBRASIL_KEY }}
+      BRAPI_TOKEN: ${{ secrets.BRAPI_TOKEN }}
       TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
       TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
       B3_CPF: ${{ secrets.B3_CPF }}
@@ -50,10 +50,6 @@ jobs:
           else
             echo "quotas.yaml sem mudanças."
           fi
-
-      - name: Debug HG Brasil (temporário)
-        continue-on-error: true
-        run: python scripts/debug_hgbrasil.py
 
       - name: Rodar monitor e notificar
         env:

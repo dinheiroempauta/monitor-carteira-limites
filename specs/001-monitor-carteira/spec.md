@@ -21,8 +21,12 @@ calcular manualmente.
 
 ## Requisitos funcionais
 
-1. **Preços**: obter a cotação atual de cada ativo via API HG Brasil
-   (`https://api.hgbrasil.com/finance/stock_price`).
+1. **Preços**: obter a cotação atual de cada ativo via API brapi.dev
+   (`https://brapi.dev/api/quote`). Tentamos primeiro a HG Brasil, mas a
+   chave gratuita do usuário não teve acesso liberado ao endpoint de
+   cotação em nenhum ticker (confirmado em produção, inclusive com ações
+   líquidas como PETR4) — a brapi.dev tem plano free com 15 mil
+   requisições/mês, mais que suficiente para 1 execução diária.
 2. **Quantidade de cotas**: obter a posição (quantidade de cada ticker) de
    forma automática via scraping da Área do Investidor B3
    (`investidorcer.b3.com.br`, login por CPF — funciona para qualquer
@@ -46,7 +50,7 @@ calcular manualmente.
 6. **Execução agendada**: rodar automaticamente 1x por dia via GitHub
    Actions (grátis), sem depender de infraestrutura paga.
 7. **Custo**: o sistema inteiro deve funcionar com serviços gratuitos (API
-   HG Brasil plano free, GitHub Actions, bot do Telegram).
+   brapi.dev plano free, GitHub Actions, bot do Telegram).
 
 ## Requisitos não funcionais / riscos aceitos
 
@@ -54,7 +58,7 @@ calcular manualmente.
   ou bloqueio anti-bot, especialmente rodando em IPs de datacenter (GitHub
   Actions). Isso é aceito pelo usuário; o sistema nunca deve travar por
   causa disso — sempre cai para a posição manual salva.
-- Nenhuma credencial (chave HG Brasil, senha/CPF da B3, token do Telegram)
+- Nenhuma credencial (token brapi.dev, senha/CPF da B3, token do Telegram)
   deve ir para o repositório em texto puro — tudo via GitHub Actions
   Secrets / variáveis de ambiente.
 - O scraper de B3 fica **desligado por padrão** no workflow agendado
