@@ -51,6 +51,10 @@ jobs:
             echo "quotas.yaml sem mudanças."
           fi
 
+      - name: Debug HG Brasil (temporário)
+        continue-on-error: true
+        run: python scripts/debug_hgbrasil.py
+
       - name: Rodar monitor e notificar
         env:
           PYTHONPATH: src
