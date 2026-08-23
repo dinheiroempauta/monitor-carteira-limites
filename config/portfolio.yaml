@@ -1,0 +1,23 @@
+# Alocação-alvo e bandas de tolerância da carteira.
+# target = alocação ideal; min/max = banda de tolerância.
+assets:
+  B5P211:
+    target: 0.40
+    min: 0.20
+    max: 0.50
+  VWRA11:
+    target: 0.30
+    min: 0.30
+    max: 0.50
+  DIVO11:
+    target: 0.20
+    min: 0.20
+    max: 0.40
+  CDIB11:
+    target: 0.05
+    min: 0.05
+    max: 0.15
+  GOLD11:
+    target: 0.05
+    min: 0.05
+    max: 0.10

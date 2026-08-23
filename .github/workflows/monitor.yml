@@ -1,0 +1,57 @@
+name: Monitor de Carteira
+
+on:
+  schedule:
+    - cron: "0 12 * * *"  # 09:00 no horário de Brasília (UTC-3)
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    env:
+      HGBRASIL_KEY: ${{ secrets.HGBRASIL_KEY }}
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      B3_CPF: ${{ secrets.B3_CPF }}
+      B3_PASSWORD: ${{ secrets.B3_PASSWORD }}
+      # Desligado por padrão: ligue como "true" em Settings > Secrets and
+      # variables > Actions > Variables (ENABLE_B3_SCRAPER) só depois de
+      # validar o scraper rodando localmente.
+      ENABLE_B3_SCRAPER: ${{ vars.ENABLE_B3_SCRAPER }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Instalar dependências
+        run: pip install -r requirements.txt
+
+      - name: Tentar atualizar quotas via scraper B3 (best-effort)
+        if: env.ENABLE_B3_SCRAPER == 'true'
+        continue-on-error: true
+        run: |
+          playwright install --with-deps chromium
+          python scripts/update_quotas_from_b3.py
+
+      - name: Commitar quotas.yaml se o scraper atualizou
+        if: env.ENABLE_B3_SCRAPER == 'true'
+        run: |
+          if ! git diff --quiet -- config/quotas.yaml; then
+            git config user.name "monitor-carteira-bot"
+            git config user.email "actions@users.noreply.github.com"
+            git add config/quotas.yaml
+            git commit -m "chore: atualiza quotas.yaml via scraper B3"
+            git push
+          else
+            echo "quotas.yaml sem mudanças."
+          fi
+
+      - name: Rodar monitor e notificar
+        env:
+          PYTHONPATH: src
+        run: python -m monitor.main

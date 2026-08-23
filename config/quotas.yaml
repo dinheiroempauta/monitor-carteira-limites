@@ -1,0 +1,11 @@
+# Posição atual (quantidade de cotas) por ticker.
+# Edite os valores manualmente sempre que comprar/vender, ou deixe o
+# scraper de scripts/update_quotas_from_b3.py atualizar este arquivo.
+updated_at: "2026-08-23"
+source: manual
+holdings:
+  B5P211: 0
+  VWRA11: 0
+  DIVO11: 0
+  CDIB11: 0
+  GOLD11: 0
