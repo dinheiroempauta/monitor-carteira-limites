@@ -27,6 +27,11 @@ def fetch_prices(tickers: list[str], api_key: str) -> dict[str, float]:
         raise PriceFetchError("Chave da API HG Brasil inválida ou expirada.")
 
     results = payload.get("results", {})
+    # A API retorna "results" como dict (chaveado pelo símbolo) em alguns
+    # planos/endpoints e como lista de objetos com "symbol" em outros.
+    if isinstance(results, list):
+        results = {entry.get("symbol", "").upper(): entry for entry in results if isinstance(entry, dict)}
+
     prices: dict[str, float] = {}
     missing: list[str] = []
     for ticker in tickers:
@@ -37,6 +42,9 @@ def fetch_prices(tickers: list[str], api_key: str) -> dict[str, float]:
         prices[ticker] = float(entry["price"])
 
     if missing:
-        raise PriceFetchError(f"Não foi possível obter cotação para: {', '.join(missing)}")
+        raise PriceFetchError(
+            f"Não foi possível obter cotação para: {', '.join(missing)}. "
+            f"Resposta bruta da API: {payload!r}"
+        )
 
     return prices
