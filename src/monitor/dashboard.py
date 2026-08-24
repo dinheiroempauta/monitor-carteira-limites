@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 
 from monitor.allocation import AssetStatus
-from monitor.performance import PerformancePoint
 
 _TEMPLATE = """<!doctype html>
 <html lang="pt-BR">
@@ -41,7 +40,7 @@ _TEMPLATE = """<!doctype html>
 </head>
 <body>
 <h1>📊 Performance da Carteira</h1>
-<div class="atualizado">Atualizado em {generated_at}</div>
+<div class="atualizado">Atualizado em {generated_at} — patrimônio e performance acumulam a partir do dia em que o dashboard começou a rodar, sem reconstruir o passado.</div>
 
 <div class="grid">
   <div class="card">
@@ -102,19 +101,22 @@ new Chart(document.getElementById('performance'), {{
 
 def build_dashboard_html(
     statuses: list[AssetStatus],
-    performance_points: list[PerformancePoint],
+    wealth_history: list[dict],
     generated_at: str,
 ) -> str:
+    """`wealth_history` é a série acumulada dia a dia (ver
+    config.load_wealth_history) — cada linha tem date/wealth/invested/
+    nominal_return/real_return como strings (vindas do CSV)."""
     dados = {
         "composicao": [{"ticker": s.ticker, "pct": round(s.pct * 100, 2)} for s in statuses],
-        "patrimonio": [{"data": p.date.isoformat(), "valor": round(p.wealth, 2)} for p in performance_points],
+        "patrimonio": [{"data": r["date"], "valor": round(float(r["wealth"]), 2)} for r in wealth_history],
         "performance": [
             {
-                "data": p.date.isoformat(),
-                "nominal": round(p.nominal_return * 100, 2),
-                "real": round(p.real_return * 100, 2) if p.real_return is not None else None,
+                "data": r["date"],
+                "nominal": round(float(r["nominal_return"]) * 100, 2),
+                "real": round(float(r["real_return"]) * 100, 2) if r["real_return"] not in ("", None) else None,
             }
-            for p in performance_points
+            for r in wealth_history
         ],
     }
     return _TEMPLATE.format(generated_at=generated_at, dados_json=json.dumps(dados, ensure_ascii=False))

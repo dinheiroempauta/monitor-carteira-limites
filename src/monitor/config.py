@@ -12,6 +12,8 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 PORTFOLIO_PATH = REPO_ROOT / "config" / "portfolio.yaml"
 LAST_STATUS_PATH = REPO_ROOT / "config" / "last_status.yaml"
 HISTORY_PATH = REPO_ROOT / "config" / "history.csv"
+WEALTH_HISTORY_PATH = REPO_ROOT / "config" / "wealth_history.csv"
+WEALTH_HISTORY_FIELDS = ["date", "wealth", "invested", "nominal_return", "real_return"]
 
 
 @dataclass(frozen=True)
@@ -76,3 +78,26 @@ def append_history(pct_by_ticker: dict[str, float], path: Path = HISTORY_PATH) -
             writer.writerow(["timestamp_utc", *tickers])
         timestamp = datetime.now(timezone.utc).isoformat(timespec="seconds")
         writer.writerow([timestamp, *(f"{pct_by_ticker[t]:.4f}" for t in tickers)])
+
+
+def load_wealth_history(path: Path = WEALTH_HISTORY_PATH) -> list[dict]:
+    """Série acumulada dia a dia (patrimônio, investido, retorno nominal e
+    real) — só cresce pra frente a partir de quando o dashboard começou a
+    rodar, sem tentar reconstruir o passado."""
+    if not path.exists():
+        return []
+    with path.open(newline="", encoding="utf-8") as f:
+        return list(csv.DictReader(f))
+
+
+def append_wealth_history(row: dict, path: Path = WEALTH_HISTORY_PATH) -> None:
+    """Acrescenta (ou substitui, se já existir uma linha do mesmo dia — o
+    dashboard pode rodar mais de uma vez no mesmo dia) um ponto na série de
+    patrimônio/performance. `row` deve ter as chaves de WEALTH_HISTORY_FIELDS."""
+    rows = [r for r in load_wealth_history(path) if r["date"] != row["date"]]
+    rows.append({k: row.get(k, "") for k in WEALTH_HISTORY_FIELDS})
+    rows.sort(key=lambda r: r["date"])
+    with path.open("w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=WEALTH_HISTORY_FIELDS)
+        writer.writeheader()
+        writer.writerows(rows)

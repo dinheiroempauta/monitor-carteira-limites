@@ -87,10 +87,15 @@ mais um lugar separado pra manter a quantidade de cotas.
 Publicado de graça no GitHub Pages, atualizado 1x/dia (18h BRT). Mostra:
 
 1. **Composição %** da carteira atual.
-2. **Patrimônio** ao longo do tempo (valor total da carteira, desde a
-   primeira transação).
+2. **Patrimônio** ao longo do tempo.
 3. **Performance nominal vs. real** — retorno bruto e retorno descontado o
    IPCA acumulado do período (API gratuita do Banco Central).
+
+Os gráficos 2 e 3 **acumulam um ponto por dia a partir de quando o
+dashboard começa a rodar** — não reconstroem o passado (decisão para não
+depender de histórico de preço, que não é gratuito/confiável em todo
+provedor). Ou seja, no início vai ter só um ou poucos pontos; a série
+cresce com o tempo.
 
 Documentação completa em
 [`specs/002-performance-dashboard/`](specs/002-performance-dashboard/).
