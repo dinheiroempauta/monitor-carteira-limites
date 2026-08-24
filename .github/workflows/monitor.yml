@@ -55,13 +55,15 @@ jobs:
           PYTHONPATH: src
         run: python scripts/build_dashboard.py
 
-      - name: Publicar dashboard (docs/index.html) se mudou
+      - name: Publicar dashboard (docs/index.html + wealth_history.csv) se mudou
         if: github.event_name == 'workflow_dispatch' || github.event.schedule == '0 21 * * 1-5'
         run: |
-          if [ -n "$(git status --porcelain -- docs/index.html)" ]; then
+          # git status --porcelain (não git diff) porque wealth_history.csv
+          # pode ser um arquivo novo/não rastreado da primeira vez.
+          if [ -n "$(git status --porcelain -- docs/index.html config/wealth_history.csv)" ]; then
             git config user.name "monitor-carteira-bot"
             git config user.email "actions@users.noreply.github.com"
-            git add docs/index.html
+            git add docs/index.html config/wealth_history.csv
             git commit -m "chore: atualiza dashboard de performance"
             git push
           fi
