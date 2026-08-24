@@ -5,7 +5,6 @@
 - **Python 3.11+**, sem framework web (não há UI nesta v1).
 - `requests` para chamar a API brapi.dev e a API do Telegram.
 - `PyYAML` para configuração (`config/portfolio.yaml`, `config/quotas.yaml`).
-- `playwright` (Python) para o scraper opcional da B3.
 - `pytest` para testar a lógica de alocação (é a parte que envolve dinheiro
   — precisa estar correta).
 - **GitHub Actions** como agendador (cron), gratuito.
@@ -19,8 +18,8 @@ versionados no próprio repo).
 ```
 config/
   portfolio.yaml      # alvo e bandas por ticker (dado fixo do usuário)
-  quotas.yaml         # posição atual (qty por ticker) — fonte de verdade,
-                       # atualizada pelo scraper ou manualmente
+  quotas.yaml         # posição atual (qty por ticker) — editado manualmente
+                       # pelo usuário sempre que compra/vende
 src/monitor/
   __init__.py
   config.py           # carrega/valida os YAML
@@ -30,10 +29,6 @@ src/monitor/
   telegram.py         # envio de mensagem via bot
   report.py           # monta o texto do relatório em pt-BR
   main.py             # orquestra tudo (entrypoint)
-scripts/
-  update_quotas_from_b3.py   # scraper best-effort (Playwright), escreve em
-                              # config/quotas.yaml; nunca lança exceção para
-                              # fora — só loga e sai com status de sucesso/falha
 tests/
   test_allocation.py
 .github/workflows/
@@ -57,7 +52,7 @@ assets:
 `config/quotas.yaml`:
 ```yaml
 updated_at: "2026-08-23"
-source: manual   # manual | b3_scraper
+source: manual
 holdings:
   B5P211: 0
   VWRA11: 0
@@ -79,31 +74,25 @@ holdings:
    ao quanto cada ativo está abaixo do alvo).
 6. Monta o relatório e envia por Telegram (ou imprime, se não configurado).
 
-## Scraper B3 (`scripts/update_quotas_from_b3.py`)
+## Decisão: scraper de posição da B3 abandonado
 
-- Login em `investidorcer.b3.com.br` com CPF/senha (`B3_CPF`, `B3_PASSWORD`
-  como secrets).
-- Navega até a posição consolidada / extrato de custódia e extrai
-  quantidade por ticker.
-- Escreve em `config/quotas.yaml` com `source: b3_scraper` e
-  `updated_at: <hoje>`.
-- **Qualquer falha (seletor não encontrado, captcha, timeout, layout
-  mudou) é capturada**: o script loga o erro, não altera `quotas.yaml`, e
-  termina com exit code distinto de erro — o workflow continua e usa a
-  última posição salva.
-- Roda **desligado por padrão** no workflow (`ENABLE_B3_SCRAPER=false`).
-  O usuário liga explicitamente depois de validar rodando localmente:
-  `python scripts/update_quotas_from_b3.py`.
+Chegamos a implementar um scraper (Playwright) da Área do Investidor B3
+(`investidorcer.b3.com.br`) para preencher `quotas.yaml` automaticamente.
+Testando com credenciais reais do usuário, a tela de senha carrega um
+captcha (`Carregando Captcha...`, confirmado via DevTools) — inviável de
+resolver sem um humano presente, em qualquer ambiente (local ou CI). Como
+o objetivo era automação sem intervenção manual, essa via foi abandonada
+e o código removido. `config/quotas.yaml` é atualizado manualmente pelo
+usuário (edição direta pelo site do GitHub), que é simples, confiável e
+não depende de nada que possa quebrar.
 
 ## GitHub Actions (`monitor.yml`)
 
 - Cron diário (ex.: 09:00 BRT).
-- Steps: checkout → setup Python → instalar deps → (se
-  `ENABLE_B3_SCRAPER=true`) instalar browsers do Playwright e rodar o
-  scraper com `continue-on-error: true` → se `quotas.yaml` mudou, commit +
-  push automático → rodar `main.py` com os secrets como env vars.
+- Steps: checkout → setup Python → instalar deps → rodar `main.py` com os
+  secrets como env vars.
 - Secrets necessários no repo: `BRAPI_TOKEN`, `TELEGRAM_BOT_TOKEN`,
-  `TELEGRAM_CHAT_ID` e, opcionalmente, `B3_CPF`/`B3_PASSWORD`.
+  `TELEGRAM_CHAT_ID`.
 
 ## Testes
 
