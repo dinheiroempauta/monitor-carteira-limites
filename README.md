@@ -14,12 +14,15 @@ Documentação completa da spec/plano/tasks em
 
 1. `config/portfolio.yaml` guarda a alocação-alvo e as bandas de tolerância
    (já preenchido com os seus valores).
-2. `config/quotas.yaml` guarda a quantidade de cotas de cada ativo — é a
-   sua posição atual. Você edita esse arquivo direto pelo GitHub sempre
-   que comprar/vender (veja abaixo). Chegamos a tentar automatizar isso
-   com um scraper da Área do Investidor da B3, mas o login de lá tem
-   captcha — não dá para automatizar sem você presente, então optamos
-   pela edição manual, que é simples e não depende de nada quebrar.
+2. `config/transactions.csv` guarda cada compra/venda (data, ticker,
+   quantidade, preço médio executado) — é a fonte de verdade da sua
+   posição atual (soma das transações) e também alimenta o dashboard de
+   performance (veja abaixo). Você acrescenta uma linha direto pelo
+   GitHub sempre que comprar/vender. Chegamos a tentar automatizar a
+   leitura da posição com um scraper da Área do Investidor da B3, mas o
+   login de lá tem captcha — não dá para automatizar sem você presente,
+   então optamos pelo registro manual de transações, que é simples e
+   não depende de nada quebrar.
 3. A cada 30min (10h-18h, dias úteis), o workflow busca a cotação de cada
    ativo na API brapi.dev, calcula o % atual de cada um e compara com a
    banda. Isso usa ~1.680 requisições/mês, bem dentro do limite gratuito
@@ -60,20 +63,43 @@ Em *Settings > Secrets and variables > Actions* do repositório, cadastre:
 | `TELEGRAM_BOT_TOKEN` | token do bot que vai te avisar (crie um com o [@BotFather](https://t.me/BotFather)) |
 | `TELEGRAM_CHAT_ID` | id do chat/usuário que vai receber o alerta |
 
-## Atualizar sua posição (quantidade de cotas)
+## Registrar uma compra ou venda
 
-Sempre que comprar ou vender, edite `config/quotas.yaml` direto pelo site
-do GitHub (abra o arquivo no repositório, clique no lápis de editar, ajuste
-os números, salve/commit):
+Sempre que comprar ou vender, acrescente uma linha em
+`config/transactions.csv` direto pelo site do GitHub (abra o arquivo,
+clique no lápis de editar, adicione a linha no final, salve/commit):
 
-```yaml
-holdings:
-  B5P211: 120
-  VWRA11: 45
-  DIVO11: 60
-  CDIB11: 30
-  GOLD11: 20
+```csv
+date,ticker,action,qty,price
+2026-08-24,VWRA11,compra,10,112.40
 ```
+
+- `action`: `compra` ou `venda`.
+- `price`: preço médio executado da operação (se a nota teve várias
+  execuções parciais, use a média ponderada).
+
+A posição atual do monitor de bandas e os 3 gráficos do dashboard (veja
+abaixo) são recalculados automaticamente a partir desse arquivo — não tem
+mais um lugar separado pra manter a quantidade de cotas.
+
+## Dashboard de performance
+
+Publicado de graça no GitHub Pages, atualizado 1x/dia (18h BRT). Mostra:
+
+1. **Composição %** da carteira atual.
+2. **Patrimônio** ao longo do tempo (valor total da carteira, desde a
+   primeira transação).
+3. **Performance nominal vs. real** — retorno bruto e retorno descontado o
+   IPCA acumulado do período (API gratuita do Banco Central).
+
+Documentação completa em
+[`specs/002-performance-dashboard/`](specs/002-performance-dashboard/).
+
+**Configuração única (uma vez só)**: em *Settings > Pages* do repositório,
+escolha *Source: Deploy from a branch*, branch `main`, pasta `/docs`. Depois
+disso a URL fica fixa (algo como
+`https://dinheiroempauta.github.io/monitor-carteira-limites/`) e atualiza
+sozinha todo dia.
 
 ## Rodar localmente
 

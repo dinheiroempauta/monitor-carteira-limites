@@ -10,7 +10,6 @@ import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 PORTFOLIO_PATH = REPO_ROOT / "config" / "portfolio.yaml"
-QUOTAS_PATH = REPO_ROOT / "config" / "quotas.yaml"
 LAST_STATUS_PATH = REPO_ROOT / "config" / "last_status.yaml"
 HISTORY_PATH = REPO_ROOT / "config" / "history.csv"
 
@@ -37,14 +36,19 @@ def load_portfolio(path: Path = PORTFOLIO_PATH) -> dict[str, AssetTarget]:
     return assets
 
 
-def load_quotas(path: Path = QUOTAS_PATH) -> dict[str, int]:
-    data = yaml.safe_load(path.read_text())
-    return {ticker: int(qty) for ticker, qty in data["holdings"].items()}
+def load_quotas() -> dict[str, int]:
+    """Posição atual por ticker — soma das transações em transactions.csv."""
+    from monitor.transactions import current_holdings, load_transactions
+
+    return current_holdings(load_transactions())
 
 
-def load_quotas_metadata(path: Path = QUOTAS_PATH) -> dict:
-    data = yaml.safe_load(path.read_text())
-    return {"updated_at": data.get("updated_at"), "source": data.get("source", "manual")}
+def load_quotas_metadata() -> dict:
+    from monitor.transactions import first_transaction_date, load_transactions
+
+    transactions = load_transactions()
+    updated_at = transactions[-1].date.isoformat() if transactions else None
+    return {"updated_at": updated_at, "source": "transactions.csv"}
 
 
 def load_last_status(path: Path = LAST_STATUS_PATH) -> dict[str, str]:

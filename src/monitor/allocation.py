@@ -37,7 +37,7 @@ def compute_statuses(
     values = {t: holdings[t] * prices[t] for t in targets}
     total = sum(values.values())
     if total <= 0:
-        raise ValueError("Valor total da carteira é zero — confira as quantidades em quotas.yaml")
+        raise ValueError("Valor total da carteira é zero — confira as quantidades em config/transactions.csv")
 
     statuses = []
     for ticker, target in targets.items():
