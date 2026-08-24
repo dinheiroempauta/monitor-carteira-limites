@@ -13,8 +13,11 @@ Documentação completa da spec/plano/tasks em
 1. `config/portfolio.yaml` guarda a alocação-alvo e as bandas de tolerância
    (já preenchido com os seus valores).
 2. `config/quotas.yaml` guarda a quantidade de cotas de cada ativo — é a
-   sua posição atual. Pode ser atualizado manualmente ou pelo scraper
-   experimental da B3 (veja abaixo).
+   sua posição atual. Você edita esse arquivo direto pelo GitHub sempre
+   que comprar/vender (veja abaixo). Chegamos a tentar automatizar isso
+   com um scraper da Área do Investidor da B3, mas o login de lá tem
+   captcha — não dá para automatizar sem você presente, então optamos
+   pela edição manual, que é simples e não depende de nada quebrar.
 3. Todo dia, o workflow busca a cotação de cada ativo na API brapi.dev,
    calcula o % atual de cada um e compara com a banda.
 4. Se algum ativo estourou a banda, manda um alerta de venda/compra pelo
@@ -29,18 +32,12 @@ Em *Settings > Secrets and variables > Actions* do repositório, cadastre:
 | `BRAPI_TOKEN` | token gratuito da sua conta na [brapi.dev](https://brapi.dev/dashboard) (plano free: 15 mil requisições/mês, cobre FIIs e ETFs) |
 | `TELEGRAM_BOT_TOKEN` | token do bot que vai te avisar (crie um com o [@BotFather](https://t.me/BotFather)) |
 | `TELEGRAM_CHAT_ID` | id do chat/usuário que vai receber o alerta |
-| `B3_CPF` / `B3_PASSWORD` | opcional, só se for usar o scraper de posição da B3 |
-
-Para ligar o scraper automático no cron do GitHub Actions, crie também a
-*variable* (não secret) `ENABLE_B3_SCRAPER` com valor `true` — **só depois
-de validar que ele funciona rodando localmente** (veja abaixo). Fica
-desligado por padrão porque login automatizado em sites de instituição
-financeira a partir de IPs de datacenter costuma cair em captcha/bloqueio
-anti-bot.
 
 ## Atualizar sua posição (quantidade de cotas)
 
-**Manual (sempre funciona):** edite `config/quotas.yaml` direto:
+Sempre que comprar ou vender, edite `config/quotas.yaml` direto pelo site
+do GitHub (abra o arquivo no repositório, clique no lápis de editar, ajuste
+os números, salve/commit):
 
 ```yaml
 holdings:
@@ -50,38 +47,6 @@ holdings:
   CDIB11: 30
   GOLD11: 20
 ```
-
-**Automático (experimental):** rode localmente
-
-```bash
-pip install -r requirements.txt
-playwright install chromium
-export B3_CPF=seu_cpf
-export B3_PASSWORD=sua_senha
-python scripts/update_quotas_from_b3.py
-```
-
-Isso faz login na Área do Investidor da B3 (funciona para qualquer
-corretora, já que a custódia dos seus ativos é sempre na B3, inclusive os
-da Rico) e atualiza `config/quotas.yaml` com a posição real. Se o site
-mudou de layout ou pedir captcha, o script falha de forma segura e não
-mexe no arquivo — é só voltar a editar manualmente até ajustar os
-seletores em `scripts/update_quotas_from_b3.py`.
-
-**Na primeira vez, rode em modo debug** — abre o navegador visível (em vez
-de headless) e, se falhar, deixa a janela aberta por 60s e salva screenshot
-+ HTML em `scripts/.debug/` para diagnóstico:
-
-```bash
-export B3_SCRAPER_DEBUG=true
-python scripts/update_quotas_from_b3.py
-```
-
-Se travar em algum ponto (login, captcha, tabela não encontrada), me
-manda o `scripts/.debug/falha.png` e o que você viu na tela — eu ajusto os
-seletores a partir disso. **Nunca** ligue `ENABLE_B3_SCRAPER=true` no
-GitHub Actions antes disso funcionar de forma estável rodando local: IPs
-de datacenter quase sempre caem em captcha/bot-detection.
 
 ## Rodar localmente
 

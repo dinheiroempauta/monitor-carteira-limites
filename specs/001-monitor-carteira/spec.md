@@ -27,14 +27,12 @@ calcular manualmente.
    cotação em nenhum ticker (confirmado em produção, inclusive com ações
    líquidas como PETR4) — a brapi.dev tem plano free com 15 mil
    requisições/mês, mais que suficiente para 1 execução diária.
-2. **Quantidade de cotas**: obter a posição (quantidade de cada ticker) de
-   forma automática via scraping da Área do Investidor B3
-   (`investidorcer.b3.com.br`, login por CPF — funciona para qualquer
-   corretora, inclusive Rico). Deve haver **fallback manual**: se o scraping
-   falhar (mudança no site, captcha, bloqueio), o sistema usa a última
-   posição conhecida registrada em `config/quotas.yaml`, que o usuário pode
-   editar à mão a qualquer momento, e avisa que os dados podem estar
-   desatualizados.
+2. **Quantidade de cotas**: registrada manualmente pelo usuário em
+   `config/quotas.yaml`, editado direto pelo site do GitHub sempre que
+   comprar/vender. Tentamos automatizar via scraping da Área do Investidor
+   B3 (`investidorcer.b3.com.br`), mas o login de lá exige resolver um
+   captcha — inviável de automatizar sem o usuário presente, então essa
+   via foi abandonada (decisão registrada em `plan.md`).
 3. **Cálculo de alocação**: para cada ativo, calcular `valor = qty × preço`,
    `% atual = valor / valor_total`, e comparar com alvo e banda.
 4. **Decisão**:
@@ -54,16 +52,9 @@ calcular manualmente.
 
 ## Requisitos não funcionais / riscos aceitos
 
-- O scraping da B3 é best-effort: pode quebrar a qualquer mudança no site
-  ou bloqueio anti-bot, especialmente rodando em IPs de datacenter (GitHub
-  Actions). Isso é aceito pelo usuário; o sistema nunca deve travar por
-  causa disso — sempre cai para a posição manual salva.
-- Nenhuma credencial (token brapi.dev, senha/CPF da B3, token do Telegram)
-  deve ir para o repositório em texto puro — tudo via GitHub Actions
-  Secrets / variáveis de ambiente.
-- O scraper de B3 fica **desligado por padrão** no workflow agendado
-  (`ENABLE_B3_SCRAPER` precisa ser explicitamente ligado) até o usuário
-  validar que funciona de forma estável na conta dele.
+- Nenhuma credencial (token brapi.dev, token do Telegram) deve ir para o
+  repositório em texto puro — tudo via GitHub Actions Secrets / variáveis
+  de ambiente.
 
 ## Fora de escopo (v1)
 
