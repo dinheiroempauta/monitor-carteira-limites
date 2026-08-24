@@ -17,6 +17,12 @@ como os do GitHub Actions costumam cair em captcha/bot-detection.
 
 Credenciais via variáveis de ambiente B3_CPF e B3_PASSWORD (nunca no código
 ou no repo).
+
+Modo debug: rode com B3_SCRAPER_DEBUG=true para abrir o navegador visível
+(não-headless) e pausar antes de fechar em caso de erro — assim dá pra ver
+exatamente onde travou (login, captcha, tabela com layout diferente). Em
+qualquer falha, um screenshot e o HTML da página são salvos em
+scripts/.debug/ para diagnóstico.
 """
 from __future__ import annotations
 
@@ -30,13 +36,26 @@ import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 QUOTAS_PATH = REPO_ROOT / "config" / "quotas.yaml"
+DEBUG_DIR = Path(__file__).resolve().parent / ".debug"
 LOGIN_URL = "https://www.investidorcer.b3.com.br/login"
 
 # Tickers que nos interessam — usado para filtrar a tabela de posição.
 TICKERS = ["B5P211", "VWRA11", "DIVO11", "CDIB11", "GOLD11"]
 
 
-def scrape_holdings(cpf: str, password: str) -> dict[str, int]:
+def _dump_debug_artifacts(page) -> None:
+    """Salva screenshot + HTML da página no momento da falha, para
+    diagnosticar sem precisar rodar tudo de novo."""
+    DEBUG_DIR.mkdir(exist_ok=True)
+    try:
+        page.screenshot(path=str(DEBUG_DIR / "falha.png"), full_page=True)
+        (DEBUG_DIR / "falha.html").write_text(page.content())
+        print(f"Artefatos de diagnóstico salvos em {DEBUG_DIR}/", file=sys.stderr)
+    except Exception as dump_exc:
+        print(f"Não foi possível salvar artefatos de diagnóstico: {dump_exc}", file=sys.stderr)
+
+
+def scrape_holdings(cpf: str, password: str, debug: bool = False) -> dict[str, int]:
     """Faz login e extrai {ticker: quantidade} da posição consolidada.
 
     Implementação best-effort: os seletores abaixo são um ponto de partida
@@ -47,7 +66,7 @@ def scrape_holdings(cpf: str, password: str) -> dict[str, int]:
 
     holdings: dict[str, int] = {}
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
+        browser = p.chromium.launch(headless=not debug, slow_mo=250 if debug else 0)
         page = browser.new_page()
         try:
             page.goto(LOGIN_URL, timeout=30_000)
@@ -67,6 +86,12 @@ def scrape_holdings(cpf: str, password: str) -> dict[str, int]:
                         if match:
                             qty = int(match.group(1).replace(".", ""))
                             holdings[ticker] = qty
+        except Exception:
+            _dump_debug_artifacts(page)
+            if debug:
+                print("Falhou — navegador fica aberto 60s para inspeção manual (modo debug).", file=sys.stderr)
+                page.wait_for_timeout(60_000)
+            raise
         finally:
             browser.close()
 
@@ -89,8 +114,10 @@ def main() -> int:
         print("B3_CPF/B3_PASSWORD não configurados — pulando scraping.", file=sys.stderr)
         return 1
 
+    debug = os.environ.get("B3_SCRAPER_DEBUG", "").lower() == "true"
+
     try:
-        holdings = scrape_holdings(cpf, password)
+        holdings = scrape_holdings(cpf, password, debug=debug)
     except Exception as exc:  # scraping é inerentemente frágil — nunca deve derrubar o pipeline
         print(f"Scraping da B3 falhou ({exc}). Mantendo quotas.yaml existente.", file=sys.stderr)
         return 1
