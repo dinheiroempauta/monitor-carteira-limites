@@ -18,19 +18,29 @@ sem precisar abrir planilha nem app de terceiros.
 2. **Composição %**: gráfico de pizza/donut com a alocação atual (mesmos dados
    já calculados pelo monitor de bandas).
 3. **Patrimônio ao longo do tempo**: série temporal do valor total da carteira
-   (quantidade possuída em cada data × preço de mercado naquela data), desde a
-   primeira transação até hoje.
-4. **Performance nominal e real**: duas séries —
-   - Nominal: valor total da carteira ÷ total aportado até a data, menos 1.
-   - Real: a mesma conta, descontando o IPCA acumulado do período (fonte:
-     API do Banco Central, série 433, gratuita e sem autenticação) — mostra o
-     ganho real de poder de compra, não só o número bruto.
+   (holdings atuais × preço de mercado do dia), **acumulada dia a dia a
+   partir de quando o dashboard começa a rodar** — sem reconstruir o
+   passado (decisão explícita do usuário: não precisa de histórico de
+   preço). Cada execução diária acrescenta um ponto em
+   `config/wealth_history.csv`.
+4. **Performance nominal e real**: duas séries, também acumuladas dia a
+   dia a partir de agora —
+   - Nominal: valor total da carteira ÷ total aportado até hoje, menos 1.
+   - Real: a mesma conta, descontando o IPCA acumulado desde o início do
+     acompanhamento (fonte: API do Banco Central, série 433, gratuita e
+     sem autenticação) — mostra o ganho real de poder de compra, não só o
+     número bruto.
 5. **Publicação**: uma página HTML estática, publicada de graça no GitHub
    Pages, atualizada automaticamente todo dia (mesmo workflow do monitor de
    bandas). Sem servidor, sem banco de dados.
 
 ## Fora de escopo (v1)
 
+- Reconstrução do passado: os gráficos de patrimônio e performance só
+  existem a partir da data em que o dashboard começou a rodar — não há
+  como saber o valor da carteira em datas anteriores sem histórico de
+  preço (decisão do usuário: aceitar essa limitação em troca de
+  simplicidade — sem depender de endpoint de histórico de preços).
 - Taxas/corretagem/IR no cálculo de custo (só quantidade × preço executado).
 - Suporte a proventos/dividendos recebidos (fica pra uma iteração futura).
 - Vendas parciais com apuração de lucro (o registro aceita venda, mas o
