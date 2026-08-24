@@ -20,19 +20,23 @@ config/
   portfolio.yaml      # alvo e bandas por ticker (dado fixo do usuário)
   quotas.yaml         # posição atual (qty por ticker) — editado manualmente
                        # pelo usuário sempre que compra/vende
+  last_status.yaml     # status de banda (por ticker) na última vez que um
+                       # alerta foi enviado — usado para detectar mudança
 src/monitor/
   __init__.py
-  config.py           # carrega/valida os YAML
+  config.py           # carrega/valida os YAML e o last_status.yaml
   prices.py           # cliente brapi.dev
   allocation.py       # cálculo de % atual, status de banda, plano de venda,
                        # sugestão de aporte
   telegram.py         # envio de mensagem via bot
   report.py           # monta o texto do relatório em pt-BR
-  main.py             # orquestra tudo (entrypoint)
+  main.py             # orquestra tudo (entrypoint) + lógica de "só alerta
+                       # se mudou"
 tests/
   test_allocation.py
+  test_config.py
 .github/workflows/
-  monitor.yml          # cron diário
+  monitor.yml          # cron a cada 30min no horário de pregão
 requirements.txt
 .env.example
 ```
@@ -72,7 +76,11 @@ holdings:
    fora da banda, visando trazer de volta ao alvo.
 5. Senão → gera sugestão de destino do próximo aporte (pesos proporcionais
    ao quanto cada ativo está abaixo do alvo).
-6. Monta o relatório e envia por Telegram (ou imprime, se não configurado).
+6. Monta o relatório e **sempre imprime no log**.
+7. Compara `{ticker: status}` atual com o salvo em `last_status.yaml`. Se
+   for igual (nada mudou desde o último alerta), encerra sem enviar
+   Telegram. Se mudou (ou é a primeira execução), envia o relatório por
+   Telegram e sobrescreve `last_status.yaml` com o status atual.
 
 ## Decisão: scraper de posição da B3 abandonado
 
@@ -88,11 +96,15 @@ não depende de nada que possa quebrar.
 
 ## GitHub Actions (`monitor.yml`)
 
-- Cron diário (ex.: 09:00 BRT).
+- Cron `*/30 13-21 * * 1-5` (a cada 30min, 10h-18h BRT, dias úteis; BRT é
+  UTC-3 fixo, sem horário de verão no Brasil desde 2019).
 - Steps: checkout → setup Python → instalar deps → rodar `main.py` com os
-  secrets como env vars.
+  secrets como env vars → se `last_status.yaml` mudou (ou seja, um alerta
+  foi enviado nessa execução), commit + push automático de volta ao repo.
 - Secrets necessários no repo: `BRAPI_TOKEN`, `TELEGRAM_BOT_TOKEN`,
   `TELEGRAM_CHAT_ID`.
+- Uso de API estimado: 16 execuções/dia × 5 tickers × ~21 dias úteis/mês ≈
+  1.680 requisições/mês, ante o limite de 15 mil do plano free da brapi.dev.
 
 ## Testes
 

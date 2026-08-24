@@ -15,3 +15,10 @@
 - [x] T11 — `README.md`: instruções de setup e de como editar quotas manualmente
 - [x] T12 — Tentativa de scraper automático da posição B3: abandonada (login
       tem captcha, inviável sem humano presente) — decisão em `plan.md`
+- [x] T13 — `config/last_status.yaml` + `load_last_status`/`save_last_status`
+      em `config.py`: guarda status de banda do último alerta enviado
+- [x] T14 — `main.py`: só envia Telegram quando o status muda desde o
+      último alerta; relatório completo sempre vai pro log
+- [x] T15 — `tests/test_config.py`: round-trip de load/save do last_status
+- [x] T16 — `.github/workflows/monitor.yml`: cron a cada 30min no horário de
+      pregão + commit automático do `last_status.yaml` quando um alerta sai

@@ -2,8 +2,13 @@ name: Monitor de Carteira
 
 on:
   schedule:
-    - cron: "0 12 * * *"  # 09:00 no horário de Brasília (UTC-3)
+    # A cada 30min, das 10h às 18h (horário de Brasília, UTC-3 fixo — sem
+    # horário de verão), dias úteis. 13-21 em UTC.
+    - cron: "*/30 13-21 * * 1-5"
   workflow_dispatch: {}
+
+permissions:
+  contents: write
 
 jobs:
   monitor:
@@ -26,3 +31,13 @@ jobs:
         env:
           PYTHONPATH: src
         run: python -m monitor.main
+
+      - name: Salvar status de banda (só quando mudou e gerou alerta)
+        run: |
+          if ! git diff --quiet -- config/last_status.yaml; then
+            git config user.name "monitor-carteira-bot"
+            git config user.email "actions@users.noreply.github.com"
+            git add config/last_status.yaml
+            git commit -m "chore: atualiza last_status.yaml após alerta"
+            git push
+          fi

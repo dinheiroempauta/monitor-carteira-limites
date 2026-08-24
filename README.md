@@ -3,7 +3,9 @@
 Monitor pessoal de alocação de carteira: avisa via Telegram quando algum
 ativo saiu da banda de tolerância e é preciso vender/comprar para
 rebalancear — ou, se ainda estiver dentro da banda, sugere como direcionar
-o próximo aporte. Roda de graça, 1x por dia, via GitHub Actions.
+o próximo aporte. Roda de graça, a cada 30min no horário de pregão, via
+GitHub Actions — mas só manda mensagem quando o status de algum ativo
+muda, não a cada execução.
 
 Documentação completa da spec/plano/tasks em
 [`specs/001-monitor-carteira/`](specs/001-monitor-carteira/).
@@ -18,10 +20,18 @@ Documentação completa da spec/plano/tasks em
    com um scraper da Área do Investidor da B3, mas o login de lá tem
    captcha — não dá para automatizar sem você presente, então optamos
    pela edição manual, que é simples e não depende de nada quebrar.
-3. Todo dia, o workflow busca a cotação de cada ativo na API brapi.dev,
-   calcula o % atual de cada um e compara com a banda.
-4. Se algum ativo estourou a banda, manda um alerta de venda/compra pelo
-   Telegram. Se está tudo dentro da banda, manda uma sugestão de aporte.
+3. A cada 30min (10h-18h, dias úteis), o workflow busca a cotação de cada
+   ativo na API brapi.dev, calcula o % atual de cada um e compara com a
+   banda. Isso usa ~1.680 requisições/mês, bem dentro do limite gratuito
+   de 15 mil da brapi.dev.
+4. `config/last_status.yaml` guarda o status (dentro/fora da banda) de
+   cada ativo na última vez que um alerta foi enviado. Só manda mensagem
+   no Telegram quando esse status muda para algum ativo — execuções sem
+   mudança ficam silenciosas (o relatório completo sempre fica no log da
+   execução, se você quiser conferir).
+5. Se algum ativo estourou a banda, manda um alerta de venda/compra pelo
+   Telegram. Se está tudo dentro da banda (e algo mudou desde o último
+   alerta), manda uma sugestão de aporte.
 
 ## Configuração (secrets do GitHub)
 

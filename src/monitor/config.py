@@ -9,6 +9,7 @@ import yaml
 REPO_ROOT = Path(__file__).resolve().parents[2]
 PORTFOLIO_PATH = REPO_ROOT / "config" / "portfolio.yaml"
 QUOTAS_PATH = REPO_ROOT / "config" / "quotas.yaml"
+LAST_STATUS_PATH = REPO_ROOT / "config" / "last_status.yaml"
 
 
 @dataclass(frozen=True)
@@ -41,3 +42,16 @@ def load_quotas(path: Path = QUOTAS_PATH) -> dict[str, int]:
 def load_quotas_metadata(path: Path = QUOTAS_PATH) -> dict:
     data = yaml.safe_load(path.read_text())
     return {"updated_at": data.get("updated_at"), "source": data.get("source", "manual")}
+
+
+def load_last_status(path: Path = LAST_STATUS_PATH) -> dict[str, str]:
+    """Status (por ticker) salvo na última execução que gerou alerta.
+    Arquivo ausente = nunca alertamos antes (retorna vazio)."""
+    if not path.exists():
+        return {}
+    data = yaml.safe_load(path.read_text()) or {}
+    return dict(data)
+
+
+def save_last_status(status_by_ticker: dict[str, str], path: Path = LAST_STATUS_PATH) -> None:
+    path.write_text(yaml.safe_dump(status_by_ticker, allow_unicode=True, sort_keys=True), encoding="utf-8")
