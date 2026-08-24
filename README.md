@@ -68,6 +68,21 @@ mudou de layout ou pedir captcha, o script falha de forma segura e não
 mexe no arquivo — é só voltar a editar manualmente até ajustar os
 seletores em `scripts/update_quotas_from_b3.py`.
 
+**Na primeira vez, rode em modo debug** — abre o navegador visível (em vez
+de headless) e, se falhar, deixa a janela aberta por 60s e salva screenshot
++ HTML em `scripts/.debug/` para diagnóstico:
+
+```bash
+export B3_SCRAPER_DEBUG=true
+python scripts/update_quotas_from_b3.py
+```
+
+Se travar em algum ponto (login, captcha, tabela não encontrada), me
+manda o `scripts/.debug/falha.png` e o que você viu na tela — eu ajusto os
+seletores a partir disso. **Nunca** ligue `ENABLE_B3_SCRAPER=true` no
+GitHub Actions antes disso funcionar de forma estável rodando local: IPs
+de datacenter quase sempre caem em captcha/bot-detection.
+
 ## Rodar localmente
 
 ```bash
