@@ -49,7 +49,7 @@ def _dump_debug_artifacts(page) -> None:
     DEBUG_DIR.mkdir(exist_ok=True)
     try:
         page.screenshot(path=str(DEBUG_DIR / "falha.png"), full_page=True)
-        (DEBUG_DIR / "falha.html").write_text(page.content())
+        (DEBUG_DIR / "falha.html").write_text(page.content(), encoding="utf-8")
         print(f"Artefatos de diagnóstico salvos em {DEBUG_DIR}/", file=sys.stderr)
     except Exception as dump_exc:
         print(f"Não foi possível salvar artefatos de diagnóstico: {dump_exc}", file=sys.stderr)
@@ -104,7 +104,7 @@ def write_quotas(holdings: dict[str, int]) -> None:
         "source": "b3_scraper",
         "holdings": holdings,
     }
-    QUOTAS_PATH.write_text(yaml.safe_dump(data, allow_unicode=True, sort_keys=False))
+    QUOTAS_PATH.write_text(yaml.safe_dump(data, allow_unicode=True, sort_keys=False), encoding="utf-8")
 
 
 def main() -> int:
