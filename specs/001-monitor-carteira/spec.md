@@ -40,27 +40,58 @@ calcular manualmente.
      Sugerir como direcionar o **próximo aporte** para se aproximar do alvo
      (maiores desvios negativos primeiro).
    - Se algum ativo está fora da banda (abaixo do mínimo ou acima do
-     máximo) → sinalizar necessidade de **rebalanceamento por venda**,
-     indicando quais ativos vender (os acima do teto) e quais comprar (os
-     abaixo do piso), com valores e quantidade aproximada de cotas.
-5. **Notificação orientada a mudança**: enviar o relatório via Telegram só
-   quando o status de banda (dentro/abaixo/acima) de algum ativo mudar em
-   relação à última vez que um alerta foi enviado — não a cada execução.
-   O status comparado fica salvo em `config/last_status.yaml`. Se as
-   credenciais do Telegram não estiverem configuradas, imprimir o
-   relatório no log de qualquer forma.
+     máximo) → calcular o plano de compra/venda que traz cada ativo fora
+     da banda de volta ao alvo (usando o valor total atual da carteira).
+     - Se esse plano não inclui nenhuma venda (só compra — os ativos que
+       sobrariam já estão dentro da própria banda) → apresentar como
+       **aporte necessário**, sem falar em venda nem IR.
+     - Se o plano inclui venda → antes de sugerir vender, calcular se dá
+       para resolver **só com aporte novo** (o aporte dilui os ativos que
+       não o recebem e reforça os que recebem, sem vender nada). Se der,
+       apresentar as duas opções lado a lado: (1) aporte, com valor exato
+       por ticker; (2) venda + compra, com um lembrete de que venda pode
+       gerar IR. Se não der (aporte necessário seria grande demais —
+       mais de 2x o valor atual da carteira), apresentar só a opção de
+       venda.
+5. **Notificação orientada a mudança, com histerese**: enviar o relatório
+   via Telegram só quando o status de banda (dentro/abaixo/acima) de algum
+   ativo mudar em relação à última vez que um alerta foi enviado — não a
+   cada execução. Entrar numa banda (ok → fora) é sempre reconhecido na
+   hora; já a recuperação (fora → ok) exige uma margem de 1 ponto
+   percentual além da borda, para não gerar vários alertas seguidos com um
+   ativo oscilando bem em cima do limite. O status comparado fica salvo em
+   `config/last_status.yaml`. Se as credenciais do Telegram não estiverem
+   configuradas, imprimir o relatório no log de qualquer forma.
 6. **Execução agendada**: rodar automaticamente a cada 30min no horário de
    pregão (10h-18h BRT, dias úteis) via GitHub Actions (grátis), sem
    depender de infraestrutura paga.
 7. **Custo**: o sistema inteiro deve funcionar com serviços gratuitos (API
    brapi.dev plano free — ~1.680 requisições/mês nessa cadência, dentro do
    limite de 15 mil —, GitHub Actions, bot do Telegram).
+8. **Privacidade das mensagens**: o texto enviado ao Telegram mostra só
+   percentuais nas posições (nunca R$ de posição nem valor total da
+   carteira), para não incentivar acompanhar o tamanho da carteira. Valores
+   em R$ aparecem só nas partes acionáveis (quanto aportar, quanto
+   vender). O log completo da execução (com valores) fica disponível na
+   aba Actions do GitHub para quem quiser conferir.
+9. **Histórico**: registrar em `config/history.csv` a alocação (só
+   percentuais) toda vez que um alerta é enviado — permite ver a evolução
+   da carteira ao longo do tempo.
+10. **Alerta de falha**: qualquer erro inesperado na execução (API fora do
+    ar, configuração inválida) também deve gerar uma mensagem no Telegram,
+    para que uma falha silenciosa não passe despercebida.
 
 ## Requisitos não funcionais / riscos aceitos
 
 - Nenhuma credencial (token brapi.dev, token do Telegram) deve ir para o
   repositório em texto puro — tudo via GitHub Actions Secrets / variáveis
   de ambiente.
+- O cálculo de "resolve só com aporte" (item 4) é uma simulação de diluição
+  baseada nos pesos de `contribution_suggestion` — não é uma otimização
+  exaustiva de todas as formas possíveis de distribuir um aporte, mas cobre
+  bem o caso comum de poucos ativos fora da banda.
+- O lembrete de IR (item 4) é só um lembrete textual — o sistema não tem
+  dado de preço médio/custo de aquisição, então não calcula o imposto real.
 
 ## Fora de escopo (v1)
 

@@ -26,12 +26,29 @@ Documentação completa da spec/plano/tasks em
    de 15 mil da brapi.dev.
 4. `config/last_status.yaml` guarda o status (dentro/fora da banda) de
    cada ativo na última vez que um alerta foi enviado. Só manda mensagem
-   no Telegram quando esse status muda para algum ativo — execuções sem
-   mudança ficam silenciosas (o relatório completo sempre fica no log da
+   no Telegram quando esse status muda para algum ativo (com uma margem
+   de segurança perto da borda da banda, pra não alertar toda hora se um
+   ativo ficar oscilando bem em cima do limite) — execuções sem mudança
+   ficam silenciosas (o relatório completo sempre fica no log da
    execução, se você quiser conferir).
-5. Se algum ativo estourou a banda, manda um alerta de venda/compra pelo
-   Telegram. Se está tudo dentro da banda (e algo mudou desde o último
-   alerta), manda uma sugestão de aporte.
+5. Se algum ativo saiu da banda, o alerta sempre prioriza resolver **só
+   com aporte** (comprando o que falta, sem vender nada) quando isso é
+   matematicamente possível. Só sugere venda quando não tem outro jeito —
+   e nesse caso mostra as duas opções lado a lado, com um lembrete de que
+   venda pode gerar IR. Se está tudo dentro da banda, manda uma sugestão
+   de para onde direcionar o próximo aporte.
+6. `config/history.csv` guarda a alocação (só %, sem R$) toda vez que um
+   alerta é enviado — um histórico simples da evolução da carteira ao
+   longo do tempo.
+7. Qualquer falha inesperada (API fora do ar, erro de configuração) também
+   vira uma mensagem no Telegram, para não passar batida.
+
+**No Telegram, as mensagens mostram só percentuais das posições — nunca o
+valor em R$ de cada ativo nem o total da carteira** (de propósito, para
+não virar um lugar de ficar acompanhando o tamanho). Valores em R$
+aparecem só nas partes acionáveis (quanto aportar, quanto vender). O log
+da execução (aba Actions do GitHub) tem a versão completa, com valores,
+se você quiser conferir.
 
 ## Configuração (secrets do GitHub)
 
