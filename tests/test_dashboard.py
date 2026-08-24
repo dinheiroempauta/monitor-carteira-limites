@@ -44,3 +44,19 @@ def test_build_dashboard_html_embute_composicao_patrimonio_e_performance():
     ]
     assert dados["performance"][1] == {"data": "2026-02-01", "nominal": 10.0, "real": 8.0}
     assert dados["performance"][0]["real"] is None
+
+
+def test_build_dashboard_html_inclui_formulario_de_transacao():
+    holdings = {"B5P211": 10, "VWRA11": 5}
+    prices = {"B5P211": 100.0, "VWRA11": 100.0}
+    statuses = compute_statuses(holdings, prices, TARGETS)
+
+    html = build_dashboard_html(statuses, [], generated_at="2026-08-24 10:00")
+
+    assert 'id="tx-form"' in html
+    assert 'id="gh-token-input"' in html
+    assert '"dinheiroempauta"' in html
+    assert '"monitor-carteira-limites"' in html
+    assert "config/transactions.csv" in html
+    # abas/chaves balanceadas — formatação do template não deixou nada sem substituir
+    assert html.count("{{") == 0 and "{dados_json}" not in html

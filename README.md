@@ -65,9 +65,23 @@ Em *Settings > Secrets and variables > Actions* do repositório, cadastre:
 
 ## Registrar uma compra ou venda
 
-Sempre que comprar ou vender, acrescente uma linha em
-`config/transactions.csv` direto pelo site do GitHub (abra o arquivo,
-clique no lápis de editar, adicione a linha no final, salve/commit):
+**Opção 1 — pelo próprio dashboard (recomendado):** o dashboard (veja
+abaixo) tem um formulário que registra a transação sozinho. Na primeira
+vez, crie um token em
+[github.com/settings/personal-access-tokens/new](https://github.com/settings/personal-access-tokens/new):
+- Tipo **fine-grained**, restrito só a este repositório (`monitor-carteira-limites`) — nunca um token clássico com acesso à conta toda.
+- Permissão **"Contents: Read and write"** (obrigatória).
+- Permissão **"Actions: Read and write"** (opcional — deixa o botão do
+  formulário também recalcular na hora, sem esperar o próximo agendamento).
+
+Cole o token no campo que aparece no dashboard — ele fica salvo só no seu
+navegador (`localStorage`), nunca é enviado a nenhum lugar além da API do
+GitHub. Depois disso, é só preencher data/ticker/ação/quantidade/preço e
+clicar em "Salvar".
+
+**Opção 2 — direto pelo site do GitHub:** acrescente uma linha em
+`config/transactions.csv` (abra o arquivo, clique no lápis de editar,
+adicione a linha no final, salve/commit):
 
 ```csv
 date,ticker,action,qty,price
@@ -78,9 +92,9 @@ date,ticker,action,qty,price
 - `price`: preço médio executado da operação (se a nota teve várias
   execuções parciais, use a média ponderada).
 
-A posição atual do monitor de bandas e os 3 gráficos do dashboard (veja
-abaixo) são recalculados automaticamente a partir desse arquivo — não tem
-mais um lugar separado pra manter a quantidade de cotas.
+Qualquer uma das duas opções escreve no mesmo arquivo — a posição atual do
+monitor de bandas e os 3 gráficos do dashboard são recalculados
+automaticamente a partir dele.
 
 ## Dashboard de performance
 
