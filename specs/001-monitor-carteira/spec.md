@@ -43,12 +43,18 @@ calcular manualmente.
      máximo) → sinalizar necessidade de **rebalanceamento por venda**,
      indicando quais ativos vender (os acima do teto) e quais comprar (os
      abaixo do piso), com valores e quantidade aproximada de cotas.
-5. **Notificação**: enviar o relatório via Telegram (bot). Se as credenciais
-   não estiverem configuradas, imprimir o relatório no log.
-6. **Execução agendada**: rodar automaticamente 1x por dia via GitHub
-   Actions (grátis), sem depender de infraestrutura paga.
+5. **Notificação orientada a mudança**: enviar o relatório via Telegram só
+   quando o status de banda (dentro/abaixo/acima) de algum ativo mudar em
+   relação à última vez que um alerta foi enviado — não a cada execução.
+   O status comparado fica salvo em `config/last_status.yaml`. Se as
+   credenciais do Telegram não estiverem configuradas, imprimir o
+   relatório no log de qualquer forma.
+6. **Execução agendada**: rodar automaticamente a cada 30min no horário de
+   pregão (10h-18h BRT, dias úteis) via GitHub Actions (grátis), sem
+   depender de infraestrutura paga.
 7. **Custo**: o sistema inteiro deve funcionar com serviços gratuitos (API
-   brapi.dev plano free, GitHub Actions, bot do Telegram).
+   brapi.dev plano free — ~1.680 requisições/mês nessa cadência, dentro do
+   limite de 15 mil —, GitHub Actions, bot do Telegram).
 
 ## Requisitos não funcionais / riscos aceitos
 
