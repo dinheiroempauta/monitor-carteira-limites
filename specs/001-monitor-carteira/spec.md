@@ -1,5 +1,12 @@
 # Spec: Monitor de Limites de Carteira
 
+> **Atualização (feature 002)**: `config/quotas.yaml`, mencionado abaixo,
+> foi substituído por `config/transactions.csv` — a posição atual passou a
+> ser calculada a partir do histórico de transações, não editada
+> diretamente. Ver [`specs/002-performance-dashboard/`](../002-performance-dashboard/).
+> O restante deste documento é mantido como registro histórico da decisão
+> original.
+
 ## Problema
 
 O usuário mantém uma carteira de ETFs/FIIs na B3 com uma alocação-alvo por

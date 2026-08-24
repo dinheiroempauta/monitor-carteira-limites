@@ -1,0 +1,120 @@
+"""Monta a página HTML do dashboard de performance (Chart.js via CDN —
+publicada no GitHub Pages, que não tem as restrições de CSP dos Artifacts)."""
+from __future__ import annotations
+
+import json
+
+from monitor.allocation import AssetStatus
+from monitor.performance import PerformancePoint
+
+_TEMPLATE = """<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Performance da Carteira</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<style>
+  :root {{
+    color-scheme: light dark;
+    --bg: #ffffff; --fg: #1a1a1a; --card: #f5f5f7; --border: #e0e0e0;
+  }}
+  @media (prefers-color-scheme: dark) {{
+    :root {{ --bg: #14151a; --fg: #e8e8ea; --card: #1e1f26; --border: #2c2d36; }}
+  }}
+  body {{
+    background: var(--bg); color: var(--fg); margin: 0; padding: 24px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }}
+  h1 {{ font-size: 1.4rem; margin-bottom: 4px; }}
+  .atualizado {{ opacity: 0.6; font-size: 0.85rem; margin-bottom: 24px; }}
+  .grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }}
+  @media (max-width: 800px) {{ .grid {{ grid-template-columns: 1fr; }} }}
+  .card {{
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 16px; min-width: 0;
+  }}
+  .card h2 {{ font-size: 1rem; margin: 0 0 12px; }}
+  .full {{ grid-column: 1 / -1; }}
+  canvas {{ max-width: 100%; }}
+</style>
+</head>
+<body>
+<h1>📊 Performance da Carteira</h1>
+<div class="atualizado">Atualizado em {generated_at}</div>
+
+<div class="grid">
+  <div class="card">
+    <h2>Composição atual</h2>
+    <canvas id="composicao"></canvas>
+  </div>
+  <div class="card full">
+    <h2>Patrimônio ao longo do tempo</h2>
+    <canvas id="patrimonio"></canvas>
+  </div>
+  <div class="card full">
+    <h2>Performance nominal vs. real (descontada a inflação)</h2>
+    <canvas id="performance"></canvas>
+  </div>
+</div>
+
+<script>
+const dados = {dados_json};
+
+new Chart(document.getElementById('composicao'), {{
+  type: 'doughnut',
+  data: {{
+    labels: dados.composicao.map(a => a.ticker),
+    datasets: [{{ data: dados.composicao.map(a => a.pct) }}]
+  }},
+  options: {{
+    plugins: {{ tooltip: {{ callbacks: {{ label: c => `${{c.label}}: ${{c.raw.toFixed(1)}}%` }} }} }}
+  }}
+}});
+
+new Chart(document.getElementById('patrimonio'), {{
+  type: 'line',
+  data: {{
+    labels: dados.patrimonio.map(p => p.data),
+    datasets: [{{ label: 'Patrimônio (R$)', data: dados.patrimonio.map(p => p.valor), borderColor: '#4f7cff', tension: 0.15 }}]
+  }}
+}});
+
+new Chart(document.getElementById('performance'), {{
+  type: 'line',
+  data: {{
+    labels: dados.performance.map(p => p.data),
+    datasets: [
+      {{ label: 'Nominal', data: dados.performance.map(p => p.nominal), borderColor: '#4f7cff', tension: 0.15 }},
+      {{ label: 'Real (descontado IPCA)', data: dados.performance.map(p => p.real), borderColor: '#ff8a4f', tension: 0.15 }}
+    ]
+  }},
+  options: {{
+    plugins: {{ tooltip: {{ callbacks: {{ label: c => `${{c.dataset.label}}: ${{c.raw?.toFixed(2)}}%` }} }} }},
+    scales: {{ y: {{ ticks: {{ callback: v => v + '%' }} }} }}
+  }}
+}});
+</script>
+</body>
+</html>
+"""
+
+
+def build_dashboard_html(
+    statuses: list[AssetStatus],
+    performance_points: list[PerformancePoint],
+    generated_at: str,
+) -> str:
+    dados = {
+        "composicao": [{"ticker": s.ticker, "pct": round(s.pct * 100, 2)} for s in statuses],
+        "patrimonio": [{"data": p.date.isoformat(), "valor": round(p.wealth, 2)} for p in performance_points],
+        "performance": [
+            {
+                "data": p.date.isoformat(),
+                "nominal": round(p.nominal_return * 100, 2),
+                "real": round(p.real_return * 100, 2) if p.real_return is not None else None,
+            }
+            for p in performance_points
+        ],
+    }
+    return _TEMPLATE.format(generated_at=generated_at, dados_json=json.dumps(dados, ensure_ascii=False))

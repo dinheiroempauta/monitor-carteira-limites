@@ -1,7 +1,8 @@
 # Tasks
 
 - [x] T1 — Config: `config/portfolio.yaml` com alvo/bandas reais do usuário
-- [x] T2 — Config: `config/quotas.yaml` preenchido com a posição real do usuário
+- [x] T2 — Config: `config/quotas.yaml` preenchido com a posição real do
+      usuário (**substituído na feature 002** por `config/transactions.csv`)
 - [x] T3 — `src/monitor/config.py`: carregar e validar os YAML
 - [x] T4 — `src/monitor/prices.py`: cliente brapi.dev (`quote`)
 - [x] T5 — `src/monitor/allocation.py`: cálculo de status por banda, plano de

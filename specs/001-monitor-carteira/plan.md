@@ -1,5 +1,11 @@
 # Plano Técnico: Monitor de Limites de Carteira
 
+> **Atualização (feature 002)**: `config/quotas.yaml` foi substituído por
+> `config/transactions.csv` (ver [`specs/002-performance-dashboard/`](../002-performance-dashboard/)).
+> `load_quotas()` em `config.py` hoje delega para `transactions.py`. O
+> restante deste documento descreve o desenho original, mantido como
+> registro histórico.
+
 ## Stack
 
 - **Python 3.11+**, sem framework web (não há UI nesta v1).
