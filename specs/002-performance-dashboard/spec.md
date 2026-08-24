@@ -33,6 +33,15 @@ sem precisar abrir planilha nem app de terceiros.
 5. **Publicação**: uma página HTML estática, publicada de graça no GitHub
    Pages, atualizada automaticamente todo dia (mesmo workflow do monitor de
    bandas). Sem servidor, sem banco de dados.
+6. **Registro de transação pelo próprio site**: um formulário na página
+   (data, ticker, ação, quantidade, preço) grava a linha direto em
+   `config/transactions.csv` via API do GitHub, chamada pelo navegador do
+   usuário. Exige um token do GitHub (fine-grained, restrito a este
+   repositório) que o usuário cola uma vez na página — fica salvo só no
+   `localStorage` do navegador dele, nunca é enviado a nenhum lugar além de
+   `api.github.com`. Opcionalmente, se o token também tiver permissão
+   "Actions: Read and write", o formulário dispara o workflow na hora
+   (`workflow_dispatch`) para recalcular sem esperar o próximo agendamento.
 
 ## Fora de escopo (v1)
 
@@ -45,9 +54,22 @@ sem precisar abrir planilha nem app de terceiros.
 - Suporte a proventos/dividendos recebidos (fica pra uma iteração futura).
 - Vendas parciais com apuração de lucro (o registro aceita venda, mas o
   cálculo de custo médio pós-venda é simplificado — ver `plan.md`).
-- Edição da página pelo próprio usuário (é só leitura/visualização).
+- Autenticação/autorização no formulário além do token do GitHub que o
+  próprio usuário controla — a página não tem login nem backend próprio.
 
 ## Requisito não funcional
 
 - Grátis: GitHub Pages, API do Banco Central e a brapi.dev (já em uso) não
   têm custo.
+
+## Risco aceito: token do GitHub no navegador
+
+O formulário de registro (requisito 6) exige que o usuário cole um token
+de escrita do GitHub na própria página, guardado em `localStorage`. Isso é
+diferente do resto do sistema, que nunca teve credencial nenhuma no lado
+do cliente. Mitigação: o token deve ser *fine-grained* e restrito só a
+este repositório (nunca um token clássico com acesso à conta toda) — o
+pior cenário de vazamento é alguém escrever no próprio
+`monitor-carteira-limites`, não ter acesso à conta do usuário. Decisão do
+usuário, ciente do trade-off, em troca de poder registrar compras direto
+pelo site em vez de editar o CSV manualmente no GitHub.

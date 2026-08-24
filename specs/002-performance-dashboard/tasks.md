@@ -31,6 +31,18 @@
       `config/transactions.csv`
 - [ ] T13 — Usuário: ativar GitHub Pages uma vez (*Settings > Pages >
       Source: branch `main`, pasta `/docs`*)
-- [ ] T14 — Confirmar em produção que a run diária do dashboard passa sem
+- [x] T14 — Confirmar em produção que a run diária do dashboard passa sem
       erro (primeira tentativa falhou no histórico de preço — corrigida
-      pela T5; falta confirmar a versão nova)
+      pela T5). Confirmado: `config/wealth_history.csv` commitado com
+      dado real, e rodar 2x no mesmo dia não duplica a linha (havia um
+      bug de commit faltando, corrigido).
+- [x] T15 — `src/monitor/dashboard.py`: formulário de registro de
+      transação embutido na página, gravando direto via API do GitHub
+      (token fine-grained salvo em `localStorage`) — usuário pediu uma
+      forma mais amigável do que editar o CSV manualmente
+- [x] T16 — `tests/test_dashboard.py`: cobre o formulário e as constantes
+      de repositório aparecendo no HTML gerado
+- [ ] T17 — Usuário: criar o token fine-grained do GitHub (permissão
+      "Contents: Read and write", e opcionalmente "Actions: Read and
+      write") e colar no dashboard na primeira visita, pra usar o
+      formulário

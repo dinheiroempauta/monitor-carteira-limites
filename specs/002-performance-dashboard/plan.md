@@ -91,6 +91,33 @@ silencioso.
   — GitHub Pages não tem as restrições de CSP dos Artifacts, então CDN
   funciona normalmente.
 
+## Formulário de transação (grava direto do navegador)
+
+`build_dashboard_html` embute um formulário (data/ticker/ação/qtd/preço) e
+o JS necessário pra chamar a API REST do GitHub direto do navegador do
+usuário — sem backend próprio:
+
+1. **Token**: um `<input type="password">` guarda o token em
+   `localStorage['gh_token']` na primeira vez; nas próximas visitas o
+   formulário já aparece pronto pra usar. Um link "trocar/remover token"
+   limpa o `localStorage`.
+2. **Salvar transação**: `GET /repos/{owner}/{repo}/contents/config/transactions.csv`
+   (pega o conteúdo atual em base64 + `sha`), decodifica, acrescenta a
+   linha nova, recodifica, e `PUT` no mesmo endpoint com o `sha` (exigido
+   pela API do GitHub pra confirmar que não houve conflito de escrita
+   concorrente) e a nova branch.
+3. **Recalcular na hora (opcional)**: depois de salvar, tenta
+   `POST /repos/{owner}/{repo}/actions/workflows/monitor.yml/dispatches`.
+   Só funciona se o token também tiver escopo "Actions: Read and write";
+   se falhar (403), o formulário só avisa que vai refletir na próxima
+   execução agendada — não é tratado como erro.
+4. **Constantes** (`REPO_OWNER`, `REPO_NAME`, `FILE_PATH`, `BRANCH`) vêm de
+   `dashboard.py` (módulo Python), não hardcoded duas vezes no HTML —
+   single source of truth caso o repo mude de nome/dono algum dia.
+
+Risco aceito e mitigação em `spec.md` (token fine-grained restrito a este
+repositório, nunca um token de conta inteira).
+
 ## Testes
 
 - `transactions.py`: posição atual correta com compra+venda; total investido
@@ -102,4 +129,4 @@ silencioso.
   linha do mesmo dia em vez de duplicar.
 - `dashboard.py`: gera HTML válido a partir de uma série sintética (não
   testa renderização visual, só que os dados certos aparecem no HTML
-  gerado).
+  gerado, incluindo o formulário e as constantes de repo/branch/arquivo).
