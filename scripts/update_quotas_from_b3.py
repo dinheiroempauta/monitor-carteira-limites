@@ -70,9 +70,23 @@ def scrape_holdings(cpf: str, password: str, debug: bool = False) -> dict[str, i
         page = browser.new_page()
         try:
             page.goto(LOGIN_URL, timeout=30_000)
-            page.fill("input[name='cpf']", cpf)
-            page.fill("input[name='password']", password)
-            page.click("button[type='submit']")
+
+            # Banner de cookies cobre a tela antes do formulário de login.
+            cookie_button = page.get_by_text("ACEITAR TODOS OS COOKIES", exact=False)
+            if cookie_button.is_visible(timeout=5_000):
+                cookie_button.click()
+
+            # Login em duas etapas: primeiro CPF/CNPJ, depois (em outra
+            # tela) a senha. Miramos pelo texto visível em vez de
+            # name/id, mais estável a mudanças internas do site.
+            page.get_by_placeholder("CPF ou CNPJ", exact=False).fill(cpf)
+            page.get_by_role("button", name="Entrar", exact=False).click()
+
+            # A partir daqui é a segunda etapa (senha) — ainda não
+            # confirmada contra o site real; se travar aqui, o print da
+            # tela seguinte nos diz como ajustar.
+            page.get_by_placeholder("senha", exact=False).fill(password)
+            page.get_by_role("button", name="Entrar", exact=False).click()
             page.wait_for_load_state("networkidle", timeout=30_000)
 
             page.goto("https://www.investidorcer.b3.com.br/posicao-consolidada", timeout=30_000)
