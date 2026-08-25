@@ -40,6 +40,16 @@ buscou, e só então calcula localmente.
    `B5P211: 65 cotas × R$ 110.62 = R$ 7,190.30 (39.5% — alvo 40%, banda 20%-50%) ✅`
    Extraia o preço (`R$ 110.62`) de cada ticker — é o preço real do
    pregão no momento da execução.
+5. Anote também o **timestamp dessa linha de log** (o campo de horário
+   que a API do GitHub retorna junto de cada linha, ex.
+   `2026-08-25T16:19:59.0597586Z`) — o passo 2 exige esse valor.
+
+**Se o workflow falhar** (conclusion `failure`, ou o log não tiver as
+linhas de preço — ex. brapi.dev fora do ar, `BRAPI_TOKEN` expirado): pare
+aqui, avise o usuário no chat e não continue. Nunca estime, reaproveite
+um preço de execução anterior, ou invente um timestamp pra contornar a
+checagem do passo 2 — isso anularia a garantia inteira de preço real que
+essa skill existe pra dar.
 
 Se o step de importação de e-mail (`Importar notas de negociação...`)
 tiver alterado `config/transactions.csv` nessa execução, rode
@@ -48,11 +58,12 @@ desatualizada.
 
 ## Passo 2 — calcular a alocação com o script
 
-Rode, do root do repo, com os preços extraídos e o valor do aporte que o
-usuário informou:
+Rode, do root do repo, com os preços e o timestamp extraídos do log, e o
+valor do aporte que o usuário informou:
 
 ```bash
 python3 scripts/aporte_rebalanceamento.py --aporte <VALOR> \
+  --run-timestamp <timestamp da linha de log, passo 1.5> \
   --preco B5P211=<preço> --preco VWRA11=<preço> --preco DIVO11=<preço> \
   --preco CDIB11=<preço> --preco GOLD11=<preço>
 ```
@@ -60,9 +71,19 @@ python3 scripts/aporte_rebalanceamento.py --aporte <VALOR> \
 (A lista de `--preco` deve cobrir todos os tickers de
 `config/portfolio.yaml` — se o portfólio mudar, ajuste a lista.)
 
+**`--run-timestamp` é obrigatório e é a garantia técnica de frescor**: o
+script recusa rodar (`SystemExit`, sem gerar tabela nenhuma) se esse
+horário tiver mais de 30 minutos de idade (`--max-idade-minutos` ajusta
+o limite) ou estiver no futuro. Isso existe porque nada no código força
+o passo 1 a ser seguido de fato — sem essa checagem, seria possível
+colar preços velhos de uma conversa anterior e o script rodaria do mesmo
+jeito. Se a checagem recusar, o caminho é disparar o workflow de novo
+(passo 1), não aumentar `--max-idade-minutos` pra forçar passagem.
+
 O script já imprime as duas tabelas em markdown prontas para colar na
-resposta (situação atual / depois do aporte). Cole a saída como está —
-não recalcule os números manualmente por cima.
+resposta (situação atual / depois do aporte), com a idade dos preços
+declarada no topo. Cole a saída como está — não recalcule os números
+manualmente por cima.
 
 ## Lógica do algoritmo (para explicar ao usuário se perguntado)
 
@@ -111,5 +132,9 @@ porque é onde um algoritmo ganancioso ingênuo erra:
   todos — confirma que a compra intercala entre eles (nivela os desvios)
   em vez de zerar o maior e deixar os outros sem nenhuma cota.
 
-Rode `python3 -m pytest tests/test_allocation.py -q` depois de qualquer
-mudança em `aporte_quotas_plan`.
+`tests/test_aporte_rebalanceamento.py` cobre a checagem de frescor do
+script: aceita timestamp recente, recusa timestamp velho (>30min por
+padrão) e recusa timestamp no futuro (sinal de horário copiado errado).
+
+Rode `python3 -m pytest -q` depois de qualquer mudança em
+`aporte_quotas_plan` ou na checagem de frescor.
