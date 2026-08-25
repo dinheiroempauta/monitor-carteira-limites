@@ -31,6 +31,26 @@ jobs:
       - name: Instalar dependências
         run: pip install -r requirements.txt
 
+      - name: Importar notas de negociação por e-mail (se configurado)
+        env:
+          PYTHONPATH: src
+          GMAIL_CLIENT_ID: ${{ secrets.GMAIL_CLIENT_ID }}
+          GMAIL_CLIENT_SECRET: ${{ secrets.GMAIL_CLIENT_SECRET }}
+          GMAIL_REFRESH_TOKEN: ${{ secrets.GMAIL_REFRESH_TOKEN }}
+          NOTA_PDF_SENHA: ${{ secrets.NOTA_PDF_SENHA }}
+        continue-on-error: true
+        run: python scripts/import_notas_email.py
+
+      - name: Salvar transações importadas (se houver)
+        run: |
+          if [ -n "$(git status --porcelain -- config/transactions.csv config/processed_notas.txt)" ]; then
+            git config user.name "monitor-carteira-bot"
+            git config user.email "actions@users.noreply.github.com"
+            git add config/transactions.csv config/processed_notas.txt
+            git commit -m "chore: importa transações das notas de negociação por e-mail"
+            git push
+          fi
+
       - name: Rodar monitor e notificar
         env:
           PYTHONPATH: src

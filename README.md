@@ -62,15 +62,21 @@ Em *Settings > Secrets and variables > Actions* do repositório, cadastre:
 | `BRAPI_TOKEN` | token gratuito da sua conta na [brapi.dev](https://brapi.dev/dashboard) (plano free: 15 mil requisições/mês, cobre FIIs e ETFs) |
 | `TELEGRAM_BOT_TOKEN` | token do bot que vai te avisar (crie um com o [@BotFather](https://t.me/BotFather)) |
 | `TELEGRAM_CHAT_ID` | id do chat/usuário que vai receber o alerta |
+| `GMAIL_CLIENT_ID` / `GMAIL_CLIENT_SECRET` / `GMAIL_REFRESH_TOKEN` | credenciais OAuth para a importação automática de notas por e-mail (opcional — sem isso, esse step só é pulado). Passo a passo em [`specs/003-importacao-automatica-notas/setup-gmail-oauth.md`](specs/003-importacao-automatica-notas/setup-gmail-oauth.md) |
+| `NOTA_PDF_SENHA` | senha dos PDFs das notas de negociação (3 últimos dígitos do seu CPF/CNPJ) — só usada junto com os secrets do Gmail acima |
 
 ## Registrar uma compra ou venda
 
-**Automático (padrão atual):** o Claude, com acesso à conta de e-mail do
-usuário, verifica periodicamente (via uma Rotina agendada) se chegou uma
-nova nota de negociação da Rico, extrai os dados (ticker, quantidade,
-preço, compra/venda) direto do PDF anexado e acrescenta a transação em
-`config/transactions.csv` sozinho — sem nenhuma ação manual. Documentado
-em detalhe em
+**Automático (via GitHub Actions + API do Gmail):** o próprio workflow
+verifica, a cada execução, se chegou uma nova nota de negociação da Rico
+por e-mail, extrai os dados (ticker, quantidade, preço, compra/venda)
+direto do PDF anexado e acrescenta a transação em
+`config/transactions.csv` sozinho — sem nenhuma ação manual. Exige um
+setup único (criar credenciais OAuth do Gmail e cadastrar 4 secrets no
+GitHub) — passo a passo completo em
+[`specs/003-importacao-automatica-notas/setup-gmail-oauth.md`](specs/003-importacao-automatica-notas/setup-gmail-oauth.md).
+Enquanto os secrets não estiverem configurados, esse step só imprime um
+aviso e não afeta o resto do workflow. Documentação técnica completa em
 [`specs/003-importacao-automatica-notas/`](specs/003-importacao-automatica-notas/).
 Isso só funciona para notas da Rico (formato do e-mail/PDF é específico
 da corretora); se você trocar de corretora, esse fluxo precisa ser
