@@ -32,6 +32,7 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Importar notas de negociação por e-mail (se configurado)
+        id: importar_notas
         env:
           PYTHONPATH: src
           GMAIL_CLIENT_ID: ${{ secrets.GMAIL_CLIENT_ID }}
@@ -40,6 +41,25 @@ jobs:
           NOTA_PDF_SENHA: ${{ secrets.NOTA_PDF_SENHA }}
         continue-on-error: true
         run: python scripts/import_notas_email.py
+
+      - name: Alertar no Telegram se a importação de notas falhou
+        if: steps.importar_notas.outcome == 'failure'
+        env:
+          PYTHONPATH: src
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          python -c "
+          import os
+          from monitor.telegram import send_message
+          send_message(
+              '⚠️ Falha ao importar notas de negociação por e-mail (Gmail). '
+              'Provável causa: token OAuth expirado/revogado. '
+              'Veja o log do step \'Importar notas de negociação por e-mail\' no GitHub Actions e refaça o setup em specs/003-importacao-automatica-notas/setup-gmail-oauth.md se necessário.',
+              os.environ['TELEGRAM_BOT_TOKEN'],
+              os.environ['TELEGRAM_CHAT_ID'],
+          )
+          "
 
       - name: Salvar transações importadas (se houver)
         run: |
