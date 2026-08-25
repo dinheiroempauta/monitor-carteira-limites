@@ -119,6 +119,104 @@ def effective_status_for_alerting(
     return effective
 
 
+@dataclass(frozen=True)
+class AportePlan:
+    purchases: dict[str, int]  # cotas a comprar por ticker
+    leftover: float  # troco não investido (nenhuma cota cabia sem violar a banda de alguém)
+    final_statuses: list[AssetStatus]  # posição resultante, já com preço/valor/% recalculados
+
+
+def aporte_quotas_plan(statuses: list[AssetStatus], aporte: float) -> AportePlan:
+    """Decide quantas cotas inteiras comprar de cada ativo com um aporte em
+    R$, em duas fases:
+
+    1) Prioridade: qualquer ativo abaixo do piso da própria banda recebe
+       cotas suficientes para alcançá-lo (do mais distante do piso para o
+       menos), mesmo que isso signifique não comprar nada de quem já está
+       dentro da banda mas abaixo do alvo — sair da banda é sempre pior do
+       que estar longe do alvo mas dentro dela.
+    2) Com o que sobra do aporte, compra 1 cota por vez do ativo mais
+       distante do próprio alvo entre os que ainda estão abaixo dele, sem
+       nunca ultrapassar o teto da banda — nunca reforça quem já está no
+       alvo ou acima, pra não afastar ainda mais quem sobrou de fora.
+
+    Nunca vende. Se o aporte não for suficiente para tirar todo mundo da
+    banda, o(s) ativo(s) que sobrarem fora aparecem em `final_statuses` com
+    o status real (abaixo/acima) — quem entrar em prática decide se
+    aumenta o aporte ou aceita vender.
+    """
+    price = {s.ticker: s.price for s in statuses}
+    value = {s.ticker: s.value for s in statuses}
+    target = {s.ticker: s.target for s in statuses}
+    tickers = list(value)
+
+    total0 = sum(value.values())
+    novo_total = total0 + aporte
+
+    budget = aporte
+    bought = {t: 0 for t in tickers}
+
+    urgentes = sorted(
+        (t for t in tickers if value[t] < target[t].min * novo_total),
+        key=lambda t: target[t].min * novo_total - value[t],
+        reverse=True,
+    )
+    for t in urgentes:
+        gap = target[t].min * novo_total - value[t]
+        if gap <= 0:
+            continue
+        qty_necessaria = math.ceil(gap / price[t])
+        custo = qty_necessaria * price[t]
+        if custo > budget:
+            qty_possivel = math.floor(budget / price[t])
+            bought[t] += qty_possivel
+            value[t] += qty_possivel * price[t]
+            budget -= qty_possivel * price[t]
+            continue
+        bought[t] += qty_necessaria
+        value[t] += custo
+        budget -= custo
+
+    while budget > 1e-9:
+        candidatos = [
+            t
+            for t in tickers
+            if value[t] < target[t].target * novo_total
+            and value[t] + price[t] <= target[t].max * novo_total + 1e-6
+            and price[t] <= budget + 1e-9
+        ]
+        if not candidatos:
+            break
+        t = max(candidatos, key=lambda t: target[t].target * novo_total - value[t])
+        bought[t] += 1
+        value[t] += price[t]
+        budget -= price[t]
+
+    final_statuses = []
+    for s in statuses:
+        v = value[s.ticker]
+        pct = v / novo_total
+        if pct < s.target.min - 1e-9:
+            status = STATUS_ABAIXO
+        elif pct > s.target.max + 1e-9:
+            status = STATUS_ACIMA
+        else:
+            status = STATUS_OK
+        final_statuses.append(
+            AssetStatus(
+                ticker=s.ticker,
+                qty=s.qty + bought[s.ticker],
+                price=s.price,
+                value=v,
+                pct=pct,
+                target=s.target,
+                status=status,
+            )
+        )
+
+    return AportePlan(purchases=bought, leftover=budget, final_statuses=final_statuses)
+
+
 def resolve_via_aporte(
     statuses: list[AssetStatus], max_aporte_multiplier: float = 2.0
 ) -> dict[str, float] | None:

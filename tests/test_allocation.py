@@ -1,12 +1,15 @@
 import sys
 from pathlib import Path
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from monitor.allocation import (
     STATUS_ABAIXO,
     STATUS_ACIMA,
     STATUS_OK,
+    aporte_quotas_plan,
     compute_statuses,
     contribution_suggestion,
     effective_status_for_alerting,
@@ -120,6 +123,46 @@ def test_effective_status_segura_recuperacao_perto_da_borda():
 
     effective = effective_status_for_alerting(statuses, last_status, hysteresis=0.01)
     assert effective["VWRA11"] == STATUS_ABAIXO  # ainda não recuperou com margem
+
+
+def test_aporte_quotas_plan_prioriza_tirar_todos_da_banda_antes_do_alvo():
+    # Cenário real desta conversa: B5P211 e CDIB11 já dentro da banda (mas
+    # B5P211 abaixo do alvo), VWRA11/DIVO11/GOLD11 abaixo do piso. O aporte
+    # é suficiente para zerar os 3 breaches E sobra pra aproximar B5P211 do
+    # alvo — não deve deixar ninguém fora da banda só pra perseguir o alvo
+    # de quem já está ok.
+    prices = {"B5P211": 110.62, "VWRA11": 114.62, "DIVO11": 123.71, "CDIB11": 51.57, "GOLD11": 24.88}
+    holdings = {"B5P211": 65, "VWRA11": 46, "DIVO11": 29, "CDIB11": 24, "GOLD11": 36}
+    statuses = compute_statuses(holdings, prices, TARGETS)
+    assert {s.ticker for s in statuses if s.status == STATUS_ABAIXO} == {"VWRA11", "DIVO11", "GOLD11"}
+
+    plan = aporte_quotas_plan(statuses, aporte=4587.90)
+
+    assert plan.purchases["CDIB11"] == 0  # já acima do alvo, não deve receber nada
+    assert all(s.status == STATUS_OK for s in plan.final_statuses)
+    assert plan.leftover >= 0
+    total_gasto = sum(qty * prices[t] for t, qty in plan.purchases.items())
+    assert total_gasto + plan.leftover == pytest.approx(4587.90, abs=1e-6)
+
+
+def test_aporte_quotas_plan_nunca_gasta_mais_que_o_aporte():
+    prices = {t: 100.0 for t in TARGETS}
+    holdings = {"B5P211": 40, "VWRA11": 26, "DIVO11": 22, "CDIB11": 6, "GOLD11": 6}
+    statuses = compute_statuses(holdings, prices, TARGETS)
+    plan = aporte_quotas_plan(statuses, aporte=137.0)
+    total_gasto = sum(qty * 100.0 for qty in plan.purchases.values())
+    assert total_gasto <= 137.0 + 1e-9
+    assert plan.leftover == pytest.approx(137.0 - total_gasto)
+
+
+def test_aporte_quotas_plan_aporte_insuficiente_deixa_status_real():
+    # Aporte pequeno demais pra zerar todos os breaches: função nunca vende,
+    # então algum ativo continua abaixo — o status reflete isso, sem mentir.
+    prices = {"B5P211": 110.62, "VWRA11": 114.62, "DIVO11": 123.71, "CDIB11": 51.57, "GOLD11": 24.88}
+    holdings = {"B5P211": 65, "VWRA11": 46, "DIVO11": 29, "CDIB11": 24, "GOLD11": 36}
+    statuses = compute_statuses(holdings, prices, TARGETS)
+    plan = aporte_quotas_plan(statuses, aporte=50.0)
+    assert any(s.status == STATUS_ABAIXO for s in plan.final_statuses)
 
 
 def test_effective_status_entra_em_banda_na_hora_sem_atraso():
