@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="assets/theme-init.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,500;0,600;0,700;1,500;1,600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,500;0,600;0,700;1,500;1,600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap"></noscript>
+<link rel="stylesheet" href="assets/site.css">
+<meta name="color-scheme" content="light dark">
+<meta name="robots" content="index, follow">
+<title>Política de Privacidade — Monitor de Carteira</title>
+<style>
+  :root { --maxw: 720px; }
+  main { max-width: var(--maxw); margin: 0 auto; padding: 40px 24px 90px; }
+  .prose h2 { font-size: 1.25rem; margin-top: 40px; }
+</style>
+</head>
+<body>
+
+<div class="masthead">
+  <div class="masthead-inner">
+    <a href="./" class="wordmark"><span>Monitor</span> de Carteira</a>
+    <div class="masthead-actions">
+      <button type="button" class="icon-btn theme-toggle" id="themeToggle" aria-label="Alternar entre tema claro e escuro">
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/></svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<main>
+  <p class="eyebrow">Documento legal</p>
+  <h1 class="page-heading">Política de Privacidade</h1>
+  <p class="page-subheading">Monitor de Carteira — ferramenta pessoal de acompanhamento de investimentos. Última atualização: 25/08/2026.</p>
+
+  <div class="prose">
+    <p>Monitor de Carteira é uma ferramenta de uso <strong>pessoal e individual</strong> — não é um produto distribuído a outros usuários, não tem cadastro, login público nem base de usuários. Ela existe para automatizar o acompanhamento da carteira de investimentos de uma única pessoa, seu criador e único usuário.</p>
+
+    <h2>O que a ferramenta acessa</h2>
+    <p>A ferramenta usa a API do Gmail, com permissão de <strong>somente leitura</strong> (escopo <code>gmail.readonly</code>), para:</p>
+    <ul>
+      <li>Buscar, na própria caixa de entrada do usuário, e-mails de notas de negociação enviados pela corretora (remetente <code>noreply@rico.com.vc</code>).</li>
+      <li>Ler o conteúdo desses e-mails específicos e o PDF anexado, para extrair os dados de cada operação (ativo, quantidade, preço, data).</li>
+    </ul>
+    <p>A ferramenta <strong>nunca envia, apaga ou modifica</strong> nenhum e-mail — o escopo usado não permite nenhuma dessas ações, só leitura.</p>
+
+    <h2>O que é feito com os dados</h2>
+    <p>Os únicos dados extraídos dos e-mails (ticker do ativo, quantidade, preço e data da operação) são gravados em um arquivo de texto (CSV) dentro do repositório de código do próprio usuário no GitHub, para alimentar os cálculos de alocação de carteira e os gráficos de performance da própria ferramenta.</p>
+    <p>Nenhum outro conteúdo do e-mail (remetente, assunto, corpo do texto, outros anexos) é armazenado, processado ou compartilhado. Nenhum dado é enviado a terceiros, serviços de analytics ou qualquer outro destino além do próprio repositório do usuário.</p>
+
+    <h2>Compartilhamento com terceiros</h2>
+    <p>Não há compartilhamento de dados com terceiros. Os dados usados por esta ferramenta transitam apenas entre a conta Gmail do próprio usuário, a execução automatizada (GitHub Actions) e o repositório do próprio usuário no GitHub.</p>
+
+    <h2>Revogar o acesso</h2>
+    <p>O acesso concedido a esta ferramenta pode ser revogado a qualquer momento em <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener">myaccount.google.com/permissions</a>.</p>
+
+    <h2>Contato</h2>
+    <p>Por ser uma ferramenta de uso pessoal, dúvidas sobre esta política podem ser encaminhadas por meio das <a href="https://github.com/dinheiroempauta/monitor-carteira-limites/issues" target="_blank" rel="noopener">issues do repositório no GitHub</a>.</p>
+  </div>
+</main>
+
+<footer>
+  Monitor de Carteira — ferramenta pessoal de acompanhamento de investimentos.<br>
+  Conteúdo educacional, não é recomendação de investimento.
+</footer>
+
+<script src="assets/site.js"></script>
+</body>
+</html>
