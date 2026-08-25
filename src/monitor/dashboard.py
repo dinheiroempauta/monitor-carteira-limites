@@ -198,7 +198,7 @@ async function ghApi(path, options) {{
     'Authorization': 'Bearer ' + ghToken(),
     'Accept': 'application/vnd.github+json',
   }}, options.headers || {{}});
-  const res = await fetch('https://api.github.com' + path, Object.assign({{}}, options, {{ headers }}));
+  const res = await fetch('https://api.github.com' + path, Object.assign({{ cache: 'no-store' }}, options, {{ headers }}));
   if (!res.ok) {{
     const body = await res.text();
     throw new Error('GitHub API ' + res.status + ': ' + body);
@@ -206,20 +206,29 @@ async function ghApi(path, options) {{
   return res.status === 204 ? null : res.json();
 }}
 
-async function appendTransaction(line) {{
+async function appendTransaction(line, attempt) {{
+  attempt = attempt || 1;
   const current = await ghApi('/repos/' + REPO_OWNER + '/' + REPO_NAME + '/contents/' + FILE_PATH + '?ref=' + BRANCH);
   const content = decodeURIComponent(escape(atob(current.content.replace(/\n/g, ''))));
   const newContent = content.replace(/\n+$/, '') + '\n' + line + '\n';
   const encoded = btoa(unescape(encodeURIComponent(newContent)));
-  await ghApi('/repos/' + REPO_OWNER + '/' + REPO_NAME + '/contents/' + FILE_PATH, {{
-    method: 'PUT',
-    body: JSON.stringify({{
-      message: 'chore: registra transação via dashboard',
-      content: encoded,
-      sha: current.sha,
-      branch: BRANCH,
-    }}),
-  }});
+  try {{
+    await ghApi('/repos/' + REPO_OWNER + '/' + REPO_NAME + '/contents/' + FILE_PATH, {{
+      method: 'PUT',
+      body: JSON.stringify({{
+        message: 'chore: registra transação via dashboard',
+        content: encoded,
+        sha: current.sha,
+        branch: BRANCH,
+      }}),
+    }});
+  }} catch (err) {{
+    // conflito de escrita (409): o arquivo mudou entre o GET e o PUT — busca de novo e tenta mais uma vez
+    if (attempt < 3 && String(err.message).includes('409')) {{
+      return appendTransaction(line, attempt + 1);
+    }}
+    throw err;
+  }}
 }}
 
 async function triggerWorkflow() {{
