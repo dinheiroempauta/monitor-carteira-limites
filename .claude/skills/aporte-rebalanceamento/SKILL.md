@@ -68,12 +68,17 @@ não recalcule os números manualmente por cima.
 
 `aporte_quotas_plan` (`src/monitor/allocation.py`) resolve em duas fases:
 
-1. **Tira todo mundo da banda primeiro.** Qualquer ativo abaixo do piso
-   da própria banda recebe cotas suficientes pra alcançá-lo (do mais
-   distante do piso pro menos distante), mesmo que isso signifique não
-   comprar nada de quem já está dentro da banda mas ainda abaixo do
-   alvo. Sair da banda é sempre pior do que estar longe do alvo mas
-   dentro dela.
+1. **Tira todo mundo da banda primeiro.** Enquanto houver ativo abaixo
+   do piso da própria banda, compra 1 cota por vez de quem estiver,
+   naquele momento, mais distante do próprio piso — recalculado a cada
+   cota, não uma fila fixa. Isso intercala as compras entre os ativos
+   urgentes: se o aporte não for grande o bastante pra zerar todos os
+   desvios, o algoritmo nivela o que sobrou entre eles em vez de zerar
+   um ativo e deixar outro sem nenhuma cota. Nunca compra nada de quem
+   já está dentro da banda mas abaixo do alvo enquanto houver alguém
+   fora dela — sair da banda é sempre pior do que estar longe do alvo
+   mas dentro dela. E nunca compra um ativo que estourou o teto pra
+   cima (isso só se resolve vendendo, fora do escopo desta skill).
 2. **Com o que sobra, aproxima do alvo.** Compra 1 cota por vez do ativo
    mais distante do próprio alvo entre os que ainda estão abaixo dele,
    sem nunca ultrapassar o teto da banda de ninguém. Nunca reforça quem
@@ -88,7 +93,23 @@ inflar a certeza do resultado.
 ## Testes
 
 `tests/test_allocation.py` cobre o cenário real desta conversa
-(`test_aporte_quotas_plan_prioriza_tirar_todos_da_banda_antes_do_alvo`),
-o caso de aporte pequeno demais, e o caso de nunca gastar mais que o
-aporte. Rode `python3 -m pytest tests/test_allocation.py -q` depois de
-qualquer mudança em `aporte_quotas_plan`.
+(`test_aporte_quotas_plan_prioriza_tirar_todos_da_banda_antes_do_alvo`) e
+cenários de carteira muito discrepante por alta/queda forte com aporte
+insuficiente para corrigir tudo — o caso mais importante de validar,
+porque é onde um algoritmo ganancioso ingênuo erra:
+
+- `test_queda_forte_de_um_ativo_aporte_pequeno_compra_o_maximo_possivel`:
+  ativo despenca, aporte pequeno demais — gasta o máximo de cotas
+  inteiras possível, nunca mais que o aportado, e o status final não
+  esconde que ainda ficou fora da banda.
+- `test_alta_forte_de_um_ativo_nunca_recebe_compra_mesmo_estourando_a_banda`:
+  ativo dispara e estoura o teto — nunca recebe nenhuma cota (só venda
+  resolve isso), o aporte inteiro vai para quem está diluído abaixo do
+  piso.
+- `test_crash_generalizado_aporte_insuficiente_nivela_em_vez_de_zerar_um_so`:
+  vários ativos abaixo do piso ao mesmo tempo, aporte insuficiente pra
+  todos — confirma que a compra intercala entre eles (nivela os desvios)
+  em vez de zerar o maior e deixar os outros sem nenhuma cota.
+
+Rode `python3 -m pytest tests/test_allocation.py -q` depois de qualquer
+mudança em `aporte_quotas_plan`.

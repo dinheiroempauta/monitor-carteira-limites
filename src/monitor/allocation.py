@@ -130,20 +130,30 @@ def aporte_quotas_plan(statuses: list[AssetStatus], aporte: float) -> AportePlan
     """Decide quantas cotas inteiras comprar de cada ativo com um aporte em
     R$, em duas fases:
 
-    1) Prioridade: qualquer ativo abaixo do piso da própria banda recebe
-       cotas suficientes para alcançá-lo (do mais distante do piso para o
-       menos), mesmo que isso signifique não comprar nada de quem já está
-       dentro da banda mas abaixo do alvo — sair da banda é sempre pior do
-       que estar longe do alvo mas dentro dela.
-    2) Com o que sobra do aporte, compra 1 cota por vez do ativo mais
-       distante do próprio alvo entre os que ainda estão abaixo dele, sem
-       nunca ultrapassar o teto da banda — nunca reforça quem já está no
-       alvo ou acima, pra não afastar ainda mais quem sobrou de fora.
+    1) Prioridade: enquanto houver ativo abaixo do piso da própria banda,
+       compra 1 cota por vez de quem estiver, NAQUELE MOMENTO, mais
+       distante do próprio piso (recalculado a cada cota, não uma lista
+       fixa no início) — isso intercala as compras entre os ativos
+       urgentes em vez de zerar o desvio de um só antes de tocar nos
+       outros. Quando o aporte não é grande o bastante para trazer todo
+       mundo pra dentro da banda, essa intercalação nivela os desvios
+       restantes em vez de deixar um ativo perfeito e outro sem nada —
+       minimiza o pior caso, não só o maior desvio inicial. Se o líder da
+       vez não couber mais no que sobrou do orçamento, tenta o próximo
+       mais urgente que couber, pra não deixar dinheiro parado só porque
+       a cota mais cara não cabe mais.
+    2) Com o que sobra do aporte (só quando a fase 1 zerou todos os
+       desvios), compra 1 cota por vez do ativo mais distante do próprio
+       alvo entre os que ainda estão abaixo dele, sem nunca ultrapassar o
+       teto da banda — nunca reforça quem já está no alvo ou acima, pra
+       não afastar ainda mais quem sobrou de fora.
 
-    Nunca vende. Se o aporte não for suficiente para tirar todo mundo da
-    banda, o(s) ativo(s) que sobrarem fora aparecem em `final_statuses` com
-    o status real (abaixo/acima) — quem entrar em prática decide se
-    aumenta o aporte ou aceita vender.
+    Nunca vende. Um ativo acima do teto da própria banda nunca recebe
+    compra (comprar mais só pioraria) — só venda resolve esse caso, fora
+    do escopo desta função. Se o aporte não for suficiente para tirar todo
+    mundo abaixo do piso da banda, o(s) ativo(s) que sobrarem fora
+    aparecem em `final_statuses` com o status real (abaixo/acima) — quem
+    entrar em prática decide se aumenta o aporte ou aceita vender.
     """
     price = {s.ticker: s.price for s in statuses}
     value = {s.ticker: s.value for s in statuses}
@@ -156,26 +166,20 @@ def aporte_quotas_plan(statuses: list[AssetStatus], aporte: float) -> AportePlan
     budget = aporte
     bought = {t: 0 for t in tickers}
 
-    urgentes = sorted(
-        (t for t in tickers if value[t] < target[t].min * novo_total),
-        key=lambda t: target[t].min * novo_total - value[t],
-        reverse=True,
-    )
-    for t in urgentes:
-        gap = target[t].min * novo_total - value[t]
-        if gap <= 0:
-            continue
-        qty_necessaria = math.ceil(gap / price[t])
-        custo = qty_necessaria * price[t]
-        if custo > budget:
-            qty_possivel = math.floor(budget / price[t])
-            bought[t] += qty_possivel
-            value[t] += qty_possivel * price[t]
-            budget -= qty_possivel * price[t]
-            continue
-        bought[t] += qty_necessaria
-        value[t] += custo
-        budget -= custo
+    def gap_piso(t: str) -> float:
+        return target[t].min * novo_total - value[t]
+
+    while budget > 1e-9:
+        urgentes = [t for t in tickers if gap_piso(t) > 1e-9]
+        if not urgentes:
+            break
+        candidatos = [t for t in urgentes if price[t] <= budget + 1e-9]
+        if not candidatos:
+            break  # nada cabe mais no que sobrou, mesmo o mais barato dos urgentes
+        t = max(candidatos, key=gap_piso)
+        bought[t] += 1
+        value[t] += price[t]
+        budget -= price[t]
 
     while budget > 1e-9:
         candidatos = [

@@ -165,6 +165,74 @@ def test_aporte_quotas_plan_aporte_insuficiente_deixa_status_real():
     assert any(s.status == STATUS_ABAIXO for s in plan.final_statuses)
 
 
+# --- Cenários de carteira muito discrepante (altas/quedas fortes), com
+# aporte insuficiente para corrigir tudo — o pedido do usuário foi
+# explicitamente testar isso, então cobrimos: nivelar em vez de esvaziar o
+# orçamento no maior desvio; nunca comprar quem estourou o teto pra cima
+# (só venda resolve); nunca gastar mais que o aportado; nunca piorar nada.
+
+
+def test_queda_forte_de_um_ativo_aporte_pequeno_compra_o_maximo_possivel():
+    # GOLD11 despenca (caiu de ~25 pra 12), fica bem abaixo do piso.
+    # Aporte de R$100 nem chega perto de resolver — deve gastar o máximo
+    # de cotas inteiras possível em GOLD11 (o único urgente) e nunca gastar
+    # mais que o aportado.
+    prices = {"B5P211": 110.62, "VWRA11": 114.62, "DIVO11": 123.71, "CDIB11": 51.57, "GOLD11": 12.00}
+    holdings = {"B5P211": 65, "VWRA11": 46, "DIVO11": 29, "CDIB11": 24, "GOLD11": 36}
+    statuses = compute_statuses(holdings, prices, TARGETS)
+    gold = next(s for s in statuses if s.ticker == "GOLD11")
+    assert gold.status == STATUS_ABAIXO
+
+    plan = aporte_quotas_plan(statuses, aporte=100.0)
+    assert plan.purchases["GOLD11"] == 8  # floor(100/12) = 8
+    assert sum(qty * prices[t] for t, qty in plan.purchases.items()) <= 100.0 + 1e-9
+    assert plan.leftover == pytest.approx(100.0 - 8 * 12.00)
+    gold_final = next(s for s in plan.final_statuses if s.ticker == "GOLD11")
+    assert gold_final.status == STATUS_ABAIXO  # não deu pra sair da banda, e o status não mente sobre isso
+
+
+def test_alta_forte_de_um_ativo_nunca_recebe_compra_mesmo_estourando_a_banda():
+    # B5P211 dispara (dobrou de preço, sem venda), estoura bem o teto de
+    # 50% — só venda resolve isso. O aporte deve ir inteiro pra quem
+    # precisa (ativos diluídos abaixo do piso), e B5P211 não pode receber
+    # nenhuma cota (comprar mais só pioraria o estouro).
+    prices = {"B5P211": 220.00, "VWRA11": 114.62, "DIVO11": 123.71, "CDIB11": 51.57, "GOLD11": 24.88}
+    holdings = {"B5P211": 65, "VWRA11": 46, "DIVO11": 29, "CDIB11": 24, "GOLD11": 36}
+    statuses = compute_statuses(holdings, prices, TARGETS)
+    b5p211 = next(s for s in statuses if s.ticker == "B5P211")
+    assert b5p211.status == STATUS_ACIMA
+
+    plan = aporte_quotas_plan(statuses, aporte=2000.0)
+    assert plan.purchases["B5P211"] == 0
+    b5p211_final = next(s for s in plan.final_statuses if s.ticker == "B5P211")
+    assert b5p211_final.status == STATUS_ACIMA  # aporte sozinho não resolve estouro pra cima — precisa vender
+    assert b5p211_final.value == b5p211.value  # nem uma cota a mais foi comprada dele
+
+
+def test_crash_generalizado_aporte_insuficiente_nivela_em_vez_de_zerar_um_so():
+    # Todos os ativos de renda variável despencam por igual (crash de
+    # mercado), menos CDIB11 (renda fixa, some ilesa) que passa a dominar a
+    # carteira. VWRA11, DIVO11 e GOLD11 ficam bem abaixo do piso, e o
+    # aporte só dá pra cobrir uma fração do que falta pra todos. A fase 1
+    # deve intercalar as compras (nivelar os 3 desvios) em vez de zerar um
+    # só e deixar os outros dois sem nenhuma cota.
+    prices = {"B5P211": 60.00, "VWRA11": 60.00, "DIVO11": 60.00, "CDIB11": 51.57, "GOLD11": 12.00}
+    holdings = {"B5P211": 65, "VWRA11": 46, "DIVO11": 29, "CDIB11": 24, "GOLD11": 36}
+    statuses = compute_statuses(holdings, prices, TARGETS)
+    abaixo = {s.ticker for s in statuses if s.status == STATUS_ABAIXO}
+    assert {"VWRA11", "DIVO11", "GOLD11"} <= abaixo
+
+    plan = aporte_quotas_plan(statuses, aporte=500.0)
+    # nivelamento: cada um dos 3 urgentes deve ter recebido pelo menos 1
+    # cota — nenhum fica zerado enquanto outro é plenamente atendido,
+    # já que nenhum deles sozinho consome o aporte inteiro.
+    for ticker in ("VWRA11", "DIVO11", "GOLD11"):
+        assert plan.purchases[ticker] > 0, f"{ticker} não recebeu nenhuma cota — orçamento não foi nivelado"
+    total_gasto = sum(qty * prices[t] for t, qty in plan.purchases.items())
+    assert total_gasto <= 500.0 + 1e-9
+    assert plan.leftover == pytest.approx(500.0 - total_gasto)
+
+
 def test_effective_status_entra_em_banda_na_hora_sem_atraso():
     prices = {t: 100.0 for t in TARGETS}
     holdings = {"B5P211": 70, "VWRA11": 15, "DIVO11": 10, "CDIB11": 2, "GOLD11": 3}
