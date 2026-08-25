@@ -65,23 +65,20 @@ Em *Settings > Secrets and variables > Actions* do repositório, cadastre:
 
 ## Registrar uma compra ou venda
 
-**Opção 1 — pelo próprio dashboard (recomendado):** o dashboard (veja
-abaixo) tem um formulário que registra a transação sozinho. Na primeira
-vez, crie um token em
-[github.com/settings/personal-access-tokens/new](https://github.com/settings/personal-access-tokens/new):
-- Tipo **fine-grained**, restrito só a este repositório (`monitor-carteira-limites`) — nunca um token clássico com acesso à conta toda.
-- Permissão **"Contents: Read and write"** (obrigatória).
-- Permissão **"Actions: Read and write"** (opcional — deixa o botão do
-  formulário também recalcular na hora, sem esperar o próximo agendamento).
+**Automático (padrão atual):** o Claude, com acesso à conta de e-mail do
+usuário, verifica periodicamente (via uma Rotina agendada) se chegou uma
+nova nota de negociação da Rico, extrai os dados (ticker, quantidade,
+preço, compra/venda) direto do PDF anexado e acrescenta a transação em
+`config/transactions.csv` sozinho — sem nenhuma ação manual. Documentado
+em detalhe em
+[`specs/003-importacao-automatica-notas/`](specs/003-importacao-automatica-notas/).
+Isso só funciona para notas da Rico (formato do e-mail/PDF é específico
+da corretora); se você trocar de corretora, esse fluxo precisa ser
+adaptado.
 
-Cole o token no campo que aparece no dashboard — ele fica salvo só no seu
-navegador (`localStorage`), nunca é enviado a nenhum lugar além da API do
-GitHub. Depois disso, é só preencher data/ticker/ação/quantidade/preço e
-clicar em "Salvar".
-
-**Opção 2 — direto pelo site do GitHub:** acrescente uma linha em
-`config/transactions.csv` (abra o arquivo, clique no lápis de editar,
-adicione a linha no final, salve/commit):
+**Manual (contingência):** se a importação automática falhar por algum
+motivo (Gmail fora do ar, corretora mudou o layout do PDF), você ainda
+pode acrescentar a linha direto pelo site do GitHub:
 
 ```csv
 date,ticker,action,qty,price
@@ -92,7 +89,15 @@ date,ticker,action,qty,price
 - `price`: preço médio executado da operação (se a nota teve várias
   execuções parciais, use a média ponderada).
 
-Qualquer uma das duas opções escreve no mesmo arquivo — a posição atual do
+O dashboard também tinha um formulário embutido para registrar transação
+direto pelo navegador (via API do GitHub com um token colado uma vez).
+Esse formulário foi **desativado** (não removido) depois que a
+importação automática por e-mail passou a cobrir esse caso — o código
+continua em `src/monitor/dashboard.py`, atrás de um flag
+(`SHOW_TRANSACTION_FORM = False`), pronto para reativar se um dia for
+necessário.
+
+Qualquer uma dessas formas escreve no mesmo arquivo — a posição atual do
 monitor de bandas e os 3 gráficos do dashboard são recalculados
 automaticamente a partir dele.
 

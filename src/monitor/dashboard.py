@@ -1,9 +1,14 @@
 """Monta a página HTML do dashboard de performance (Chart.js via CDN —
 publicada no GitHub Pages, que não tem as restrições de CSP dos Artifacts).
 
-Inclui um formulário que registra novas transações direto do navegador,
-via API do GitHub (token fine-grained salvo só no localStorage do usuário
-— nunca enviado a nenhum outro lugar além de api.github.com)."""
+O formulário de registro de transação direto pelo navegador (via API do
+GitHub, token fine-grained salvo no localStorage) foi DESATIVADO —
+`SHOW_TRANSACTION_FORM = False` — depois que o registro de transações
+passou a ser automático via leitura das notas de negociação por e-mail
+(ver `specs/003-importacao-automatica-notas/`). O código continua aqui,
+intacto, para o caso de a automação por e-mail falhar e o usuário
+precisar de novo do registro manual pelo site; só não é mais renderizado
+por padrão."""
 from __future__ import annotations
 
 import json
@@ -14,6 +19,8 @@ REPO_OWNER = "dinheiroempauta"
 REPO_NAME = "monitor-carteira-limites"
 FILE_PATH = "config/transactions.csv"
 BRANCH = "main"
+
+SHOW_TRANSACTION_FORM = False
 
 _TEMPLATE = r"""<!doctype html>
 <html lang="pt-BR">
@@ -74,7 +81,55 @@ _TEMPLATE = r"""<!doctype html>
     <canvas id="performance"></canvas>
   </div>
 
-  <div class="card full">
+  {form_section}
+</div>
+
+<script>
+const dados = {dados_json};
+
+new Chart(document.getElementById('composicao'), {{
+  type: 'doughnut',
+  data: {{
+    labels: dados.composicao.map(a => a.ticker),
+    datasets: [{{ data: dados.composicao.map(a => a.pct) }}]
+  }},
+  options: {{
+    plugins: {{ tooltip: {{ callbacks: {{ label: c => `${{c.label}}: ${{c.raw.toFixed(1)}}%` }} }} }}
+  }}
+}});
+
+new Chart(document.getElementById('patrimonio'), {{
+  type: 'line',
+  data: {{
+    labels: dados.patrimonio.map(p => p.data),
+    datasets: [{{ label: 'Patrimônio (R$)', data: dados.patrimonio.map(p => p.valor), borderColor: '#4f7cff', tension: 0.15 }}]
+  }}
+}});
+
+new Chart(document.getElementById('performance'), {{
+  type: 'line',
+  data: {{
+    labels: dados.performance.map(p => p.data),
+    datasets: [
+      {{ label: 'Nominal', data: dados.performance.map(p => p.nominal), borderColor: '#4f7cff', tension: 0.15 }},
+      {{ label: 'Real (descontado IPCA)', data: dados.performance.map(p => p.real), borderColor: '#ff8a4f', tension: 0.15 }}
+    ]
+  }},
+  options: {{
+    plugins: {{ tooltip: {{ callbacks: {{ label: c => `${{c.dataset.label}}: ${{c.raw?.toFixed(2)}}%` }} }} }},
+    scales: {{ y: {{ ticks: {{ callback: v => v + '%' }} }} }}
+  }}
+}});
+
+{form_script}
+</script>
+</body>
+</html>
+"""
+
+# Bloco do formulário de registro de transação — mantido intacto, mas não
+# renderizado por padrão (ver SHOW_TRANSACTION_FORM no topo do arquivo).
+_FORM_SECTION_HTML = """<div class="card full">
     <h2>➕ Registrar compra ou venda</h2>
 
     <div id="token-setup" style="display:none; margin-bottom:14px;">
@@ -117,49 +172,12 @@ _TEMPLATE = r"""<!doctype html>
     <p style="font-size:0.8rem; opacity:0.6; margin-top:12px;">
       <a href="#" id="gh-token-change">Trocar ou remover o token salvo neste navegador</a>
     </p>
-  </div>
-</div>
+  </div>"""
 
-<script>
-const dados = {dados_json};
-const REPO_OWNER = "{repo_owner}";
+_FORM_SCRIPT_TEMPLATE = """const REPO_OWNER = "{repo_owner}";
 const REPO_NAME = "{repo_name}";
 const FILE_PATH = "{file_path}";
 const BRANCH = "{branch}";
-
-new Chart(document.getElementById('composicao'), {{
-  type: 'doughnut',
-  data: {{
-    labels: dados.composicao.map(a => a.ticker),
-    datasets: [{{ data: dados.composicao.map(a => a.pct) }}]
-  }},
-  options: {{
-    plugins: {{ tooltip: {{ callbacks: {{ label: c => `${{c.label}}: ${{c.raw.toFixed(1)}}%` }} }} }}
-  }}
-}});
-
-new Chart(document.getElementById('patrimonio'), {{
-  type: 'line',
-  data: {{
-    labels: dados.patrimonio.map(p => p.data),
-    datasets: [{{ label: 'Patrimônio (R$)', data: dados.patrimonio.map(p => p.valor), borderColor: '#4f7cff', tension: 0.15 }}]
-  }}
-}});
-
-new Chart(document.getElementById('performance'), {{
-  type: 'line',
-  data: {{
-    labels: dados.performance.map(p => p.data),
-    datasets: [
-      {{ label: 'Nominal', data: dados.performance.map(p => p.nominal), borderColor: '#4f7cff', tension: 0.15 }},
-      {{ label: 'Real (descontado IPCA)', data: dados.performance.map(p => p.real), borderColor: '#ff8a4f', tension: 0.15 }}
-    ]
-  }},
-  options: {{
-    plugins: {{ tooltip: {{ callbacks: {{ label: c => `${{c.dataset.label}}: ${{c.raw?.toFixed(2)}}%` }} }} }},
-    scales: {{ y: {{ ticks: {{ callback: v => v + '%' }} }} }}
-  }}
-}});
 
 // --- Formulário de nova transação (grava direto na API do GitHub) ---
 
@@ -209,8 +227,8 @@ async function ghApi(path, options) {{
 async function appendTransaction(line, attempt) {{
   attempt = attempt || 1;
   const current = await ghApi('/repos/' + REPO_OWNER + '/' + REPO_NAME + '/contents/' + FILE_PATH + '?ref=' + BRANCH);
-  const content = decodeURIComponent(escape(atob(current.content.replace(/\n/g, ''))));
-  const newContent = content.replace(/\n+$/, '') + '\n' + line + '\n';
+  const content = decodeURIComponent(escape(atob(current.content.replace(/\\n/g, ''))));
+  const newContent = content.replace(/\\n+$/, '') + '\\n' + line + '\\n';
   const encoded = btoa(unescape(encodeURIComponent(newContent)));
   try {{
     await ghApi('/repos/' + REPO_OWNER + '/' + REPO_NAME + '/contents/' + FILE_PATH, {{
@@ -278,11 +296,7 @@ document.getElementById('tx-form').addEventListener('submit', async (e) => {{
   }} finally {{
     submitBtn.disabled = false;
   }}
-}});
-</script>
-</body>
-</html>
-"""
+}});"""
 
 
 def build_dashboard_html(
@@ -305,11 +319,21 @@ def build_dashboard_html(
             for r in wealth_history
         ],
     }
+    if SHOW_TRANSACTION_FORM:
+        form_section = _FORM_SECTION_HTML
+        form_script = _FORM_SCRIPT_TEMPLATE.format(
+            repo_owner=REPO_OWNER,
+            repo_name=REPO_NAME,
+            file_path=FILE_PATH,
+            branch=BRANCH,
+        )
+    else:
+        form_section = ""
+        form_script = ""
+
     return _TEMPLATE.format(
         generated_at=generated_at,
         dados_json=json.dumps(dados, ensure_ascii=False),
-        repo_owner=REPO_OWNER,
-        repo_name=REPO_NAME,
-        file_path=FILE_PATH,
-        branch=BRANCH,
+        form_section=form_section,
+        form_script=form_script,
     )
