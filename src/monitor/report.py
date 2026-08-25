@@ -8,7 +8,7 @@ vender), nunca no tamanho da posição em si.
 """
 from __future__ import annotations
 
-from monitor.allocation import STATUS_ABAIXO, STATUS_ACIMA, AssetStatus, RebalanceAction
+from monitor.allocation import STATUS_ABAIXO, STATUS_ACIMA, AportePlan, AssetStatus, RebalanceAction
 
 STATUS_LABEL = {
     STATUS_ABAIXO: "🔵 abaixo da banda",
@@ -100,5 +100,43 @@ def build_report(
     lines.append("")
 
     lines.extend(_actions_section(actions, contribution_weights, aporte_fix))
+
+    return "\n".join(lines)
+
+
+def build_aporte_report(plan: AportePlan, statuses_atuais: list[AssetStatus], aporte: float) -> str:
+    """Mensagem de Telegram (texto simples, sem markdown de tabela — o app
+    do Telegram não renderiza tabela) com o plano de compra sob demanda de
+    aporte_quotas_plan. Pensada pra ser disparada por um workflow_dispatch
+    com o campo `aporte` preenchido, sem precisar de nenhum agente no
+    caminho — ver .claude/skills/aporte-rebalanceamento/SKILL.md."""
+    price = {s.ticker: s.price for s in statuses_atuais}
+    lines = [f"💰 *Aporte de R$ {aporte:,.2f}*", ""]
+
+    gasto_total = sum(qty * price[t] for t, qty in plan.purchases.items())
+    for s in sorted(plan.final_statuses, key=lambda s: -s.value):
+        qty_comprada = plan.purchases.get(s.ticker, 0)
+        if qty_comprada:
+            custo = qty_comprada * price[s.ticker]
+            linha_compra = f"comprar {_cotas(qty_comprada)} (R$ {custo:,.2f})"
+        else:
+            linha_compra = "não comprar"
+        lines.append(
+            f"{s.ticker}: {linha_compra} — fica em {s.pct:.1%} "
+            f"(alvo {s.target.target:.0%}, banda {s.target.min:.0%}-{s.target.max:.0%}) "
+            f"{STATUS_LABEL[s.status]}"
+        )
+
+    lines.append("")
+    lines.append(f"Total investido: R$ {gasto_total:,.2f}")
+    if plan.leftover > 0.01:
+        lines.append(f"Troco não investido: R$ {plan.leftover:,.2f} (nenhuma cota cabia sem sair do alvo de alguém).")
+
+    if any(s.status != "ok" for s in plan.final_statuses):
+        lines.append("")
+        lines.append(
+            "⚠️ Esse aporte não foi suficiente para trazer todo mundo pra dentro da banda — "
+            "os ativos acima ainda fora dela continuam precisando de atenção."
+        )
 
     return "\n".join(lines)
