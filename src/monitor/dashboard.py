@@ -1,6 +1,14 @@
 """Monta a página HTML do dashboard de performance (Chart.js via CDN —
 publicada no GitHub Pages, que não tem as restrições de CSP dos Artifacts).
 
+Aplica o design system compartilhado da "Dinheiro em Pauta"
+(docs/assets/site.css, site.js, theme-init.js — copiados uma vez do
+pacote de identidade visual, não regenerados por este módulo): tokens de
+cor/tipografia, masthead com alternância de tema, cards de gráfico e
+padrão de formulário. É reuso da identidade visual, não uma página do
+blog em si — por isso o wordmark do masthead diz "Monitor de Carteira",
+sem link de volta pro blog.
+
 O formulário de registro de transação direto pelo navegador (via API do
 GitHub, token fine-grained salvo no localStorage) foi DESATIVADO —
 `SHOW_TRANSACTION_FORM = False` — depois que o registro de transações
@@ -27,99 +35,185 @@ _TEMPLATE = r"""<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="assets/theme-init.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,500;0,600;0,700;1,500;1,600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,500;0,600;0,700;1,500;1,600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,500;0,600;0,700;1,500;1,600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap"></noscript>
+<link rel="stylesheet" href="assets/site.css">
+<meta name="color-scheme" content="light dark">
 <title>Performance da Carteira</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <style>
-  :root {{
-    color-scheme: light dark;
-    --bg: #ffffff; --fg: #1a1a1a; --card: #f5f5f7; --border: #e0e0e0; --accent: #4f7cff;
+  :root {{ --maxw: 1200px; }}
+  main {{ max-width: var(--maxw); margin: 0 auto; padding: 40px 24px 90px; }}
+  .eyebrow {{ margin-top: 0; }}
+  .dash-grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 28px; }}
+  @media (max-width: 800px) {{ .dash-grid {{ grid-template-columns: 1fr; }} }}
+  .dash-full {{ grid-column: 1 / -1; }}
+  .chart-svg-wrap canvas {{ max-width: 100%; }}
+
+  .field-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(150px,1fr)); gap: 14px 16px; align-items: end; margin-bottom: 8px; }}
+  .field {{ display: flex; flex-direction: column; gap: 6px; }}
+  .field label {{ font-family: var(--font-mono); font-size: 12px; color: var(--ink); font-weight: 600; }}
+  .field select {{
+    font-family: var(--font-body); background: var(--paper); color: var(--ink); border: 1px solid var(--line-strong);
+    border-radius: 3px; padding: 11px 12px; min-height: 44px;
   }}
-  @media (prefers-color-scheme: dark) {{
-    :root {{ --bg: #14151a; --fg: #e8e8ea; --card: #1e1f26; --border: #2c2d36; }}
-  }}
-  body {{
-    background: var(--bg); color: var(--fg); margin: 0; padding: 24px;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  }}
-  h1 {{ font-size: 1.4rem; margin-bottom: 4px; }}
-  .atualizado {{ opacity: 0.6; font-size: 0.85rem; margin-bottom: 24px; }}
-  .grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }}
-  @media (max-width: 800px) {{ .grid {{ grid-template-columns: 1fr; }} }}
-  .card {{
-    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
-    padding: 16px; min-width: 0;
-  }}
-  .card h2 {{ font-size: 1rem; margin: 0 0 12px; }}
-  .full {{ grid-column: 1 / -1; }}
-  canvas {{ max-width: 100%; }}
-  label {{ display: flex; flex-direction: column; gap: 4px; font-size: 0.8rem; opacity: 0.85; }}
-  input, select, button {{
-    font: inherit; padding: 8px; border-radius: 8px; border: 1px solid var(--border);
-    background: var(--bg); color: var(--fg);
-  }}
-  button {{ background: var(--accent); color: #fff; border: none; cursor: pointer; }}
-  button:disabled {{ opacity: 0.5; cursor: default; }}
-  a {{ color: var(--accent); }}
-  #tx-status {{ min-height: 1.2em; }}
+  .token-setup {{ margin-bottom: 18px; font-size: 14.5px; }}
+  .token-setup p {{ margin: 0 0 10px; }}
+  .token-row {{ display: flex; gap: 8px; }}
+  .token-row input {{ flex: 1; }}
+  #tx-status {{ min-height: 1.3em; margin-top: 14px; font-size: 14px; }}
+  .token-change {{ font-size: 13px; color: var(--muted); margin-top: 14px; }}
 </style>
 </head>
 <body>
-<h1>📊 Performance da Carteira</h1>
-<div class="atualizado">Atualizado em {generated_at} — patrimônio e performance acumulam a partir do dia em que o dashboard começou a rodar, sem reconstruir o passado.</div>
 
-<div class="grid">
-  <div class="card">
-    <h2>Composição atual</h2>
-    <canvas id="composicao"></canvas>
+<div class="masthead">
+  <div class="masthead-inner">
+    <span class="wordmark"><span>Monitor</span> de Carteira</span>
+    <div class="masthead-actions">
+      <button type="button" class="icon-btn theme-toggle" id="themeToggle" aria-label="Alternar entre tema claro e escuro">
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/></svg>
+      </button>
+    </div>
   </div>
-  <div class="card full">
-    <h2>Patrimônio ao longo do tempo</h2>
-    <canvas id="patrimonio"></canvas>
-  </div>
-  <div class="card full">
-    <h2>Performance nominal vs. real (descontada a inflação)</h2>
-    <canvas id="performance"></canvas>
-  </div>
-
-  {form_section}
 </div>
 
+<main>
+  <p class="eyebrow">Carteira pessoal</p>
+  <h1 class="page-heading">Performance da Carteira</h1>
+  <p class="page-subheading">Atualizado em {generated_at} — patrimônio e performance acumulam a partir do dia em que o dashboard começou a rodar, sem reconstruir o passado.</p>
+
+  <div class="dash-grid">
+    <div class="chart-card">
+      <div class="chart-head"><div class="chart-title">Composição atual</div></div>
+      <div class="chart-svg-wrap"><canvas id="composicao"></canvas></div>
+    </div>
+    <div class="chart-card dash-full">
+      <div class="chart-head"><div class="chart-title">Patrimônio ao longo do tempo</div></div>
+      <div class="chart-svg-wrap"><canvas id="patrimonio"></canvas></div>
+    </div>
+    <div class="chart-card dash-full">
+      <div class="chart-head"><div class="chart-title">Performance nominal vs. real (descontada a inflação)</div></div>
+      <div class="chart-svg-wrap"><canvas id="performance"></canvas></div>
+    </div>
+
+    {form_section}
+  </div>
+</main>
+
+<footer>
+  Monitor de Carteira — ferramenta pessoal de acompanhamento de investimentos.<br>
+  Conteúdo educacional, não é recomendação de investimento.
+</footer>
+
+<script src="assets/site.js"></script>
 <script>
 const dados = {dados_json};
 
-new Chart(document.getElementById('composicao'), {{
-  type: 'doughnut',
-  data: {{
-    labels: dados.composicao.map(a => a.ticker),
-    datasets: [{{ data: dados.composicao.map(a => a.pct) }}]
-  }},
-  options: {{
-    plugins: {{ tooltip: {{ callbacks: {{ label: c => `${{c.label}}: ${{c.raw.toFixed(1)}}%` }} }} }}
-  }}
-}});
+function fmtPct(v) {{
+  if (v === null || v === undefined || Number.isNaN(v)) return '—';
+  return v.toLocaleString('pt-BR', {{ minimumFractionDigits: 1, maximumFractionDigits: 1 }}) + '%';
+}}
+function fmtBRL(v) {{
+  return v.toLocaleString('pt-BR', {{ style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 2 }});
+}}
 
-new Chart(document.getElementById('patrimonio'), {{
-  type: 'line',
-  data: {{
-    labels: dados.patrimonio.map(p => p.data),
-    datasets: [{{ label: 'Patrimônio (R$)', data: dados.patrimonio.map(p => p.valor), borderColor: '#4f7cff', tension: 0.15 }}]
-  }}
-}});
+function cssVar(name) {{
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}}
 
-new Chart(document.getElementById('performance'), {{
-  type: 'line',
-  data: {{
-    labels: dados.performance.map(p => p.data),
-    datasets: [
-      {{ label: 'Nominal', data: dados.performance.map(p => p.nominal), borderColor: '#4f7cff', tension: 0.15 }},
-      {{ label: 'Real (descontado IPCA)', data: dados.performance.map(p => p.real), borderColor: '#ff8a4f', tension: 0.15 }}
-    ]
-  }},
-  options: {{
-    plugins: {{ tooltip: {{ callbacks: {{ label: c => `${{c.dataset.label}}: ${{c.raw?.toFixed(2)}}%` }} }} }},
-    scales: {{ y: {{ ticks: {{ callback: v => v + '%' }} }} }}
-  }}
-}});
+let charts = [];
+
+function corDoTema() {{
+  return {{
+    green: cssVar('--green'),
+    gold: cssVar('--gold'),
+    brick: cssVar('--brick'),
+    muted: cssVar('--muted'),
+    line: cssVar('--line'),
+    ink: cssVar('--ink'),
+  }};
+}}
+
+function montarGraficos() {{
+  const cor = corDoTema();
+  charts.forEach(c => c.destroy());
+  charts = [];
+
+  charts.push(new Chart(document.getElementById('composicao'), {{
+    type: 'doughnut',
+    data: {{
+      labels: dados.composicao.map(a => a.ticker),
+      datasets: [{{ data: dados.composicao.map(a => a.pct), backgroundColor: [cor.green, cor.gold, cor.brick, cor.muted, cor.ink] }}]
+    }},
+    options: {{
+      plugins: {{
+        legend: {{ labels: {{ color: cor.ink }} }},
+        tooltip: {{ callbacks: {{ label: c => `${{c.label}}: ${{fmtPct(c.raw)}}` }} }}
+      }}
+    }}
+  }}));
+
+  charts.push(new Chart(document.getElementById('patrimonio'), {{
+    type: 'line',
+    data: {{
+      labels: dados.patrimonio.map(p => p.data),
+      datasets: [{{ label: 'Patrimônio', data: dados.patrimonio.map(p => p.valor), borderColor: cor.green, backgroundColor: cor.green, tension: 0.15 }}]
+    }},
+    options: {{
+      scales: {{
+        x: {{ ticks: {{ color: cor.muted }}, grid: {{ color: cor.line }} }},
+        y: {{ ticks: {{ color: cor.muted, callback: v => fmtBRL(v) }}, grid: {{ color: cor.line }} }}
+      }},
+      plugins: {{
+        legend: {{ labels: {{ color: cor.ink }} }},
+        tooltip: {{ callbacks: {{ label: c => `${{c.dataset.label}}: ${{fmtBRL(c.raw)}}` }} }}
+      }}
+    }}
+  }}));
+
+  charts.push(new Chart(document.getElementById('performance'), {{
+    type: 'line',
+    data: {{
+      labels: dados.performance.map(p => p.data),
+      datasets: [
+        {{ label: 'Nominal', data: dados.performance.map(p => p.nominal), borderColor: cor.green, backgroundColor: cor.green, tension: 0.15 }},
+        {{ label: 'Real (descontado IPCA)', data: dados.performance.map(p => p.real), borderColor: cor.gold, backgroundColor: cor.gold, tension: 0.15 }}
+      ]
+    }},
+    options: {{
+      scales: {{
+        x: {{ ticks: {{ color: cor.muted }}, grid: {{ color: cor.line }} }},
+        y: {{ ticks: {{ color: cor.muted, callback: v => fmtPct(v) }}, grid: {{ color: cor.line }} }}
+      }},
+      plugins: {{
+        legend: {{ labels: {{ color: cor.ink }} }},
+        tooltip: {{ callbacks: {{ label: c => `${{c.dataset.label}}: ${{fmtPct(c.raw)}}` }} }}
+      }}
+    }}
+  }}));
+}}
+
+montarGraficos();
+
+// Recolore os gráficos depois que o botão de tema (site.js) já trocou o
+// data-theme — precisa vir DEPOIS do listener do site.js (registrado
+// quando o <script src="assets/site.js"> rodou, antes deste bloco), já
+// que dois listeners no mesmo evento disparam na ordem de registro.
+const themeToggleBtn = document.getElementById('themeToggle');
+if (themeToggleBtn) {{
+  themeToggleBtn.addEventListener('click', () => setTimeout(montarGraficos, 0));
+}}
+if (window.matchMedia) {{
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {{
+    if (!document.documentElement.getAttribute('data-theme')) montarGraficos();
+  }});
+}}
 
 {form_script}
 </script>
@@ -129,11 +223,11 @@ new Chart(document.getElementById('performance'), {{
 
 # Bloco do formulário de registro de transação — mantido intacto, mas não
 # renderizado por padrão (ver SHOW_TRANSACTION_FORM no topo do arquivo).
-_FORM_SECTION_HTML = """<div class="card full">
-    <h2>➕ Registrar compra ou venda</h2>
+_FORM_SECTION_HTML = """<div class="chart-card dash-full">
+    <div class="chart-head"><div class="chart-title">➕ Registrar compra ou venda</div></div>
 
-    <div id="token-setup" style="display:none; margin-bottom:14px;">
-      <p style="font-size:0.85rem; opacity:0.8; margin-top:0;">
+    <div id="token-setup" class="token-setup" style="display:none;">
+      <p>
         Cole um token do GitHub para salvar direto por aqui (crie em
         <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">github.com/settings/personal-access-tokens/new</a>,
         tipo <em>fine-grained</em>, restrito a este repositório, com permissão
@@ -141,35 +235,47 @@ _FORM_SECTION_HTML = """<div class="card full">
         também recalcule na hora). Fica salvo só neste navegador (localStorage), nunca é
         enviado a nenhum lugar além da API do GitHub.
       </p>
-      <div style="display:flex; gap:8px;">
-        <input type="password" id="gh-token-input" placeholder="github_pat_..." style="flex:1;">
-        <button type="button" id="gh-token-save">Salvar token</button>
+      <div class="token-row">
+        <input type="password" id="gh-token-input" placeholder="github_pat_...">
+        <button type="button" class="btn btn-primary" id="gh-token-save">Salvar token</button>
       </div>
     </div>
 
-    <form id="tx-form" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(110px,1fr)); gap:10px; align-items:end;">
-      <label>Data
-        <input type="date" id="tx-date" required>
-      </label>
-      <label>Ticker
-        <select id="tx-ticker" required></select>
-      </label>
-      <label>Ação
-        <select id="tx-action" required>
-          <option value="compra">Compra</option>
-          <option value="venda">Venda</option>
-        </select>
-      </label>
-      <label>Quantidade
-        <input type="number" id="tx-qty" min="1" step="1" required>
-      </label>
-      <label>Preço médio
-        <input type="number" id="tx-price" min="0.01" step="0.01" required>
-      </label>
-      <button type="submit">Salvar</button>
+    <form id="tx-form">
+      <div class="field-grid">
+        <div class="field">
+          <label for="tx-date">Data</label>
+          <input type="date" id="tx-date" required aria-describedby="tx-date-error">
+          <span class="field-error" id="tx-date-error">Informe uma data.</span>
+        </div>
+        <div class="field">
+          <label for="tx-ticker">Ticker</label>
+          <select id="tx-ticker" required></select>
+        </div>
+        <div class="field">
+          <label for="tx-action">Ação</label>
+          <select id="tx-action" required>
+            <option value="compra">Compra</option>
+            <option value="venda">Venda</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="tx-qty">Quantidade</label>
+          <input type="number" id="tx-qty" min="1" step="1" required aria-describedby="tx-qty-error">
+          <span class="field-error" id="tx-qty-error">Informe uma quantidade maior que zero.</span>
+        </div>
+        <div class="field">
+          <label for="tx-price">Preço médio</label>
+          <input type="number" id="tx-price" min="0.01" step="0.01" required aria-describedby="tx-price-error">
+          <span class="field-error" id="tx-price-error">Informe um preço maior que zero.</span>
+        </div>
+        <div class="field">
+          <button type="submit" class="btn btn-primary">Salvar</button>
+        </div>
+      </div>
     </form>
-    <div id="tx-status" style="margin-top:10px; font-size:0.9rem;"></div>
-    <p style="font-size:0.8rem; opacity:0.6; margin-top:12px;">
+    <div id="tx-status" role="status" aria-live="polite"></div>
+    <p class="token-change">
       <a href="#" id="gh-token-change">Trocar ou remover o token salvo neste navegador</a>
     </p>
   </div>"""
@@ -261,29 +367,44 @@ async function triggerWorkflow() {{
   }}
 }}
 
+function validarCampo(input, errorEl, invalido) {{
+  input.setAttribute('aria-invalid', invalido ? 'true' : 'false');
+  if (errorEl) errorEl.classList.toggle('show', invalido);
+}}
+
 document.getElementById('tx-form').addEventListener('submit', async (e) => {{
   e.preventDefault();
   const statusEl = document.getElementById('tx-status');
-  if (!ghToken()) {{
-    statusEl.textContent = '⚠️ Configure o token do GitHub primeiro.';
-    return;
-  }}
-  const date = document.getElementById('tx-date').value;
+  const dateEl = document.getElementById('tx-date');
+  const qtyEl = document.getElementById('tx-qty');
+  const priceEl = document.getElementById('tx-price');
+
+  const date = dateEl.value;
   const ticker = document.getElementById('tx-ticker').value;
   const action = document.getElementById('tx-action').value;
-  const qty = document.getElementById('tx-qty').value;
-  const price = document.getElementById('tx-price').value;
+  const qty = qtyEl.value;
+  const price = priceEl.value;
+
+  validarCampo(dateEl, document.getElementById('tx-date-error'), !date);
+  validarCampo(qtyEl, document.getElementById('tx-qty-error'), !qty || Number(qty) <= 0);
+  validarCampo(priceEl, document.getElementById('tx-price-error'), !price || Number(price) <= 0);
+
   if (!date || !ticker || !qty || !price || Number(qty) <= 0 || Number(price) <= 0) {{
-    statusEl.textContent = '⚠️ Preencha todos os campos com valores válidos.';
+    statusEl.textContent = 'Preencha todos os campos com valores válidos.';
     return;
   }}
+  if (!ghToken()) {{
+    statusEl.textContent = 'Configure o token do GitHub primeiro.';
+    return;
+  }}
+
   const line = [date, ticker, action, qty, Number(price).toFixed(2)].join(',');
   const submitBtn = e.target.querySelector('button[type="submit"]');
   submitBtn.disabled = true;
   statusEl.textContent = 'Salvando...';
   try {{
     await appendTransaction(line);
-    let msg = '✅ Transação registrada!';
+    let msg = 'Transação registrada!';
     const dispatched = await triggerWorkflow();
     msg += dispatched
       ? ' Recalculando agora — atualiza em alguns minutos.'
@@ -292,7 +413,7 @@ document.getElementById('tx-form').addEventListener('submit', async (e) => {{
     e.target.reset();
     document.getElementById('tx-date').value = new Date().toISOString().slice(0, 10);
   }} catch (err) {{
-    statusEl.textContent = '❌ Erro ao salvar: ' + err.message;
+    statusEl.textContent = 'Erro ao salvar: ' + err.message;
   }} finally {{
     submitBtn.disabled = false;
   }}

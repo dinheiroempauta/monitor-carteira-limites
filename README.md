@@ -125,6 +125,13 @@ cresce com o tempo.
 Documentação completa em
 [`specs/002-performance-dashboard/`](specs/002-performance-dashboard/).
 
+**Visual**: usa o design system da "Dinheiro em Pauta" (tokens de
+cor/tipografia, masthead com alternância clara/escura, cards de gráfico),
+reaproveitado a partir de um pacote de identidade visual — `docs/assets/`
+(`site.css`, `site.js`, `theme-init.js`) são cópias estáticas desse
+pacote, não geradas pelo script; só `docs/index.html` é reescrito a cada
+execução.
+
 **Configuração única (uma vez só)**: em *Settings > Pages* do repositório,
 escolha *Source: Deploy from a branch*, branch `main`, pasta `/docs`. Depois
 disso a URL fica fixa (algo como
