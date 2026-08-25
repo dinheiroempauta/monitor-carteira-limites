@@ -41,7 +41,7 @@
 </head>
 <body>
 <h1>📊 Performance da Carteira</h1>
-<div class="atualizado">Atualizado em 2026-08-25 02:03 UTC — patrimônio e performance acumulam a partir do dia em que o dashboard começou a rodar, sem reconstruir o passado.</div>
+<div class="atualizado">Atualizado em 2026-08-25 02:40 UTC — patrimônio e performance acumulam a partir do dia em que o dashboard começou a rodar, sem reconstruir o passado.</div>
 
 <div class="grid">
   <div class="card">
@@ -57,58 +57,11 @@
     <canvas id="performance"></canvas>
   </div>
 
-  <div class="card full">
-    <h2>➕ Registrar compra ou venda</h2>
-
-    <div id="token-setup" style="display:none; margin-bottom:14px;">
-      <p style="font-size:0.85rem; opacity:0.8; margin-top:0;">
-        Cole um token do GitHub para salvar direto por aqui (crie em
-        <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">github.com/settings/personal-access-tokens/new</a>,
-        tipo <em>fine-grained</em>, restrito a este repositório, com permissão
-        "Contents: Read and write" — e "Actions: Read and write" se quiser que o botão
-        também recalcule na hora). Fica salvo só neste navegador (localStorage), nunca é
-        enviado a nenhum lugar além da API do GitHub.
-      </p>
-      <div style="display:flex; gap:8px;">
-        <input type="password" id="gh-token-input" placeholder="github_pat_..." style="flex:1;">
-        <button type="button" id="gh-token-save">Salvar token</button>
-      </div>
-    </div>
-
-    <form id="tx-form" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(110px,1fr)); gap:10px; align-items:end;">
-      <label>Data
-        <input type="date" id="tx-date" required>
-      </label>
-      <label>Ticker
-        <select id="tx-ticker" required></select>
-      </label>
-      <label>Ação
-        <select id="tx-action" required>
-          <option value="compra">Compra</option>
-          <option value="venda">Venda</option>
-        </select>
-      </label>
-      <label>Quantidade
-        <input type="number" id="tx-qty" min="1" step="1" required>
-      </label>
-      <label>Preço médio
-        <input type="number" id="tx-price" min="0.01" step="0.01" required>
-      </label>
-      <button type="submit">Salvar</button>
-    </form>
-    <div id="tx-status" style="margin-top:10px; font-size:0.9rem;"></div>
-    <p style="font-size:0.8rem; opacity:0.6; margin-top:12px;">
-      <a href="#" id="gh-token-change">Trocar ou remover o token salvo neste navegador</a>
-    </p>
-  </div>
+  
 </div>
 
 <script>
 const dados = {"composicao": [{"ticker": "B5P211", "pct": 39.66}, {"ticker": "VWRA11", "pct": 28.94}, {"ticker": "DIVO11", "pct": 19.65}, {"ticker": "CDIB11", "pct": 6.82}, {"ticker": "GOLD11", "pct": 4.93}], "patrimonio": [{"data": "2026-08-24", "valor": 18128.45}, {"data": "2026-08-25", "valor": 18128.45}], "performance": [{"data": "2026-08-24", "nominal": 0.02, "real": -0.05}, {"data": "2026-08-25", "nominal": 0.14, "real": 0.07}]};
-const REPO_OWNER = "dinheiroempauta";
-const REPO_NAME = "monitor-carteira-limites";
-const FILE_PATH = "config/transactions.csv";
-const BRANCH = "main";
 
 new Chart(document.getElementById('composicao'), {
   type: 'doughnut',
@@ -144,124 +97,7 @@ new Chart(document.getElementById('performance'), {
   }
 });
 
-// --- Formulário de nova transação (grava direto na API do GitHub) ---
 
-const tickerSelect = document.getElementById('tx-ticker');
-dados.composicao.forEach(a => {
-  const opt = document.createElement('option');
-  opt.value = a.ticker;
-  opt.textContent = a.ticker;
-  tickerSelect.appendChild(opt);
-});
-document.getElementById('tx-date').value = new Date().toISOString().slice(0, 10);
-
-function ghToken() { return localStorage.getItem('gh_token') || ''; }
-function setGhToken(t) { localStorage.setItem('gh_token', t); }
-function clearGhToken() { localStorage.removeItem('gh_token'); }
-
-function refreshTokenUi() {
-  document.getElementById('token-setup').style.display = ghToken() ? 'none' : 'block';
-}
-refreshTokenUi();
-
-document.getElementById('gh-token-save').addEventListener('click', () => {
-  const v = document.getElementById('gh-token-input').value.trim();
-  if (v) { setGhToken(v); refreshTokenUi(); }
-});
-document.getElementById('gh-token-change').addEventListener('click', (e) => {
-  e.preventDefault();
-  clearGhToken();
-  document.getElementById('gh-token-input').value = '';
-  refreshTokenUi();
-});
-
-async function ghApi(path, options) {
-  options = options || {};
-  const headers = Object.assign({
-    'Authorization': 'Bearer ' + ghToken(),
-    'Accept': 'application/vnd.github+json',
-  }, options.headers || {});
-  const res = await fetch('https://api.github.com' + path, Object.assign({ cache: 'no-store' }, options, { headers }));
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error('GitHub API ' + res.status + ': ' + body);
-  }
-  return res.status === 204 ? null : res.json();
-}
-
-async function appendTransaction(line, attempt) {
-  attempt = attempt || 1;
-  const current = await ghApi('/repos/' + REPO_OWNER + '/' + REPO_NAME + '/contents/' + FILE_PATH + '?ref=' + BRANCH);
-  const content = decodeURIComponent(escape(atob(current.content.replace(/\n/g, ''))));
-  const newContent = content.replace(/\n+$/, '') + '\n' + line + '\n';
-  const encoded = btoa(unescape(encodeURIComponent(newContent)));
-  try {
-    await ghApi('/repos/' + REPO_OWNER + '/' + REPO_NAME + '/contents/' + FILE_PATH, {
-      method: 'PUT',
-      body: JSON.stringify({
-        message: 'chore: registra transação via dashboard',
-        content: encoded,
-        sha: current.sha,
-        branch: BRANCH,
-      }),
-    });
-  } catch (err) {
-    // conflito de escrita (409): o arquivo mudou entre o GET e o PUT — busca de novo e tenta mais uma vez
-    if (attempt < 3 && String(err.message).includes('409')) {
-      return appendTransaction(line, attempt + 1);
-    }
-    throw err;
-  }
-}
-
-async function triggerWorkflow() {
-  try {
-    await ghApi('/repos/' + REPO_OWNER + '/' + REPO_NAME + '/actions/workflows/monitor.yml/dispatches', {
-      method: 'POST',
-      body: JSON.stringify({ ref: BRANCH }),
-    });
-    return true;
-  } catch (e) {
-    return false;
-  }
-}
-
-document.getElementById('tx-form').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const statusEl = document.getElementById('tx-status');
-  if (!ghToken()) {
-    statusEl.textContent = '⚠️ Configure o token do GitHub primeiro.';
-    return;
-  }
-  const date = document.getElementById('tx-date').value;
-  const ticker = document.getElementById('tx-ticker').value;
-  const action = document.getElementById('tx-action').value;
-  const qty = document.getElementById('tx-qty').value;
-  const price = document.getElementById('tx-price').value;
-  if (!date || !ticker || !qty || !price || Number(qty) <= 0 || Number(price) <= 0) {
-    statusEl.textContent = '⚠️ Preencha todos os campos com valores válidos.';
-    return;
-  }
-  const line = [date, ticker, action, qty, Number(price).toFixed(2)].join(',');
-  const submitBtn = e.target.querySelector('button[type="submit"]');
-  submitBtn.disabled = true;
-  statusEl.textContent = 'Salvando...';
-  try {
-    await appendTransaction(line);
-    let msg = '✅ Transação registrada!';
-    const dispatched = await triggerWorkflow();
-    msg += dispatched
-      ? ' Recalculando agora — atualiza em alguns minutos.'
-      : ' Vai refletir na próxima execução automática (a cada 30min no pregão, ou 1x/dia pro dashboard).';
-    statusEl.textContent = msg;
-    e.target.reset();
-    document.getElementById('tx-date').value = new Date().toISOString().slice(0, 10);
-  } catch (err) {
-    statusEl.textContent = '❌ Erro ao salvar: ' + err.message;
-  } finally {
-    submitBtn.disabled = false;
-  }
-});
 </script>
 </body>
 </html>
