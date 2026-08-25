@@ -98,19 +98,19 @@ def formatar_tabela_atual(statuses) -> str:
 
 def formatar_tabela_pos_aporte(plan, statuses_atuais, aporte: float) -> str:
     linhas = [
-        "| Ativo | Compra | Cotas | Valor novo | % nova | Alvo | Banda | Status |",
-        "|---|---|---|---|---|---|---|---|",
+        "| Ativo | Compra | Cotas | Preço | Valor novo | % nova | Alvo | Banda | Status |",
+        "|---|---|---|---|---|---|---|---|---|",
     ]
     total = sum(s.value for s in plan.final_statuses)
     for s in sorted(plan.final_statuses, key=lambda s: -s.value):
         qty_comprada = plan.purchases.get(s.ticker, 0)
         custo = qty_comprada * s.price
         linhas.append(
-            f"| {s.ticker} | +{qty_comprada} (R$ {brl(custo)}) | {s.qty} | R$ {brl(s.value)} | {s.pct:.1%} | "
+            f"| {s.ticker} | +{qty_comprada} (R$ {brl(custo)}) | {s.qty} | R$ {brl(s.price)} | R$ {brl(s.value)} | {s.pct:.1%} | "
             f"{s.target.target:.0%} | {s.target.min:.0%}–{s.target.max:.0%} | {STATUS_LABEL[s.status]} |"
         )
     gasto_total = sum(plan.purchases.get(t, 0) * s.price for t, s in ((s.ticker, s) for s in statuses_atuais))
-    linhas.append(f"| **Total** | **R$ {brl(gasto_total)}** | | **R$ {brl(total)}** | | | | |")
+    linhas.append(f"| **Total** | **R$ {brl(gasto_total)}** | | | **R$ {brl(total)}** | | | | |")
     if plan.leftover > 0.01:
         linhas.append("")
         linhas.append(f"Troco não investido: R$ {brl(plan.leftover)} (nenhuma cota cabia sem sair do alvo de alguém).")
