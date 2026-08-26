@@ -26,10 +26,15 @@ def _cotas(qty: int) -> str:
     return "1 cota" if qty == 1 else f"{qty} cotas"
 
 
+def _brl(valor: float) -> str:
+    """Formata em pt-BR (milhar com ponto, decimal com vírgula): 4.587,90."""
+    return f"{valor:,.2f}".translate(str.maketrans(",.", ".,"))
+
+
 def _position_lines(statuses: list[AssetStatus], show_values: bool) -> list[str]:
     lines = []
     for s in statuses:
-        detalhe = f"{_cotas(s.qty)} × R$ {s.price:.2f} = R$ {s.value:,.2f} (" if show_values else "("
+        detalhe = f"{_cotas(s.qty)} × R$ {_brl(s.price)} = R$ {_brl(s.value)} (" if show_values else "("
         lines.append(
             f"{s.ticker}: {detalhe}{s.pct:.1%} — alvo {s.target.target:.0%}, "
             f"banda {s.target.min:.0%}-{s.target.max:.0%}) {STATUS_LABEL[s.status]}"
@@ -58,7 +63,7 @@ def _actions_section(
         # novo), sem venda nem IR envolvidos.
         lines = ["🟡 *Aporte necessário* (nenhuma venda envolvida):", ""]
         for a in actions:
-            lines.append(f"- Comprar {_cotas(a.qty)} de {a.ticker} (aprox. R$ {a.approx_value:,.2f})")
+            lines.append(f"- Comprar {_cotas(a.qty)} de {a.ticker} (aprox. R$ {_brl(a.approx_value)})")
         return lines
 
     lines = ["⚠️ *Rebalanceamento necessário*", ""]
@@ -66,7 +71,7 @@ def _actions_section(
     if aporte_fix:
         lines.append("Opção 1 — resolve só com aporte, sem vender nada:")
         for ticker, valor in sorted(aporte_fix.items(), key=lambda kv: -kv[1]):
-            lines.append(f"- Aportar R$ {valor:,.2f} em {ticker}")
+            lines.append(f"- Aportar R$ {_brl(valor)} em {ticker}")
         lines.append("")
         lines.append("Opção 2 (alternativa) — venda + compra:")
     else:
@@ -74,7 +79,7 @@ def _actions_section(
                       "demais). Venda recomendada:")
 
     for a in actions:
-        lines.append(f"- {a.action.upper()} {_cotas(a.qty)} de {a.ticker} (aprox. R$ {a.approx_value:,.2f})")
+        lines.append(f"- {a.action.upper()} {_cotas(a.qty)} de {a.ticker} (aprox. R$ {_brl(a.approx_value)})")
     lines.append("")
     lines.append(IR_NOTE)
     return lines
@@ -95,7 +100,7 @@ def build_report(
 
     if show_values:
         total = sum(s.value for s in statuses)
-        lines.append(f"Valor total: R$ {total:,.2f}")
+        lines.append(f"Valor total: R$ {_brl(total)}")
     lines.append(f"Posição atualizada em: {quotas_metadata.get('updated_at')} (fonte: {quotas_metadata.get('source')})")
     lines.append("")
 
@@ -111,26 +116,26 @@ def build_aporte_report(plan: AportePlan, statuses_atuais: list[AssetStatus], ap
     com o campo `aporte` preenchido, sem precisar de nenhum agente no
     caminho — ver .claude/skills/aporte-rebalanceamento/SKILL.md."""
     price = {s.ticker: s.price for s in statuses_atuais}
-    lines = [f"💰 *Aporte de R$ {aporte:,.2f}*", ""]
+    lines = [f"💰 *Aporte de R$ {_brl(aporte)}*", ""]
 
     gasto_total = sum(qty * price[t] for t, qty in plan.purchases.items())
     for s in sorted(plan.final_statuses, key=lambda s: -s.value):
         qty_comprada = plan.purchases.get(s.ticker, 0)
         if qty_comprada:
             custo = qty_comprada * price[s.ticker]
-            linha_compra = f"comprar {_cotas(qty_comprada)} (R$ {custo:,.2f})"
+            linha_compra = f"comprar {_cotas(qty_comprada)} (R$ {_brl(custo)})"
         else:
             linha_compra = "não comprar"
+        lines.append(f"◾ *{s.ticker}* — {linha_compra}")
         lines.append(
-            f"{s.ticker}: {linha_compra} — fica em {s.pct:.1%} "
-            f"(alvo {s.target.target:.0%}, banda {s.target.min:.0%}-{s.target.max:.0%}) "
-            f"{STATUS_LABEL[s.status]}"
+            f"→ fica em {s.pct:.1%} (alvo {s.target.target:.0%}, "
+            f"banda {s.target.min:.0%}-{s.target.max:.0%}) {STATUS_LABEL[s.status]}"
         )
+        lines.append("")
 
-    lines.append("")
-    lines.append(f"Total investido: R$ {gasto_total:,.2f}")
+    lines.append(f"*Total investido:* R$ {_brl(gasto_total)}")
     if plan.leftover > 0.01:
-        lines.append(f"Troco não investido: R$ {plan.leftover:,.2f} (nenhuma cota cabia sem sair do alvo de alguém).")
+        lines.append(f"Troco não investido: R$ {_brl(plan.leftover)} (nenhuma cota cabia sem sair do alvo de alguém).")
 
     if any(s.status != "ok" for s in plan.final_statuses):
         lines.append("")

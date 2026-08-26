@@ -92,7 +92,7 @@ def main() -> int:
     )
     if bot_token and chat_id:
         try:
-            send_message(telegram_report, bot_token, chat_id)
+            send_message(telegram_report, bot_token, chat_id, parse_mode="Markdown")
         except TelegramSendError as exc:
             print(f"\n{exc}", file=sys.stderr)
             return 1
