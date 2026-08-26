@@ -5,16 +5,22 @@ on:
     # Monitor de bandas: a cada 15min, das 10h às 18h (horário de Brasília,
     # UTC-3 fixo — sem horário de verão), dias úteis. 13-21 em UTC.
     #
-    # Minutos "6,21,36,51" (nunca em :00/:15/:30/:45) de propósito: o
-    # GitHub Actions não garante o horário exato de disparo de `schedule` —
-    # em picos de carga o disparo pode atrasar bastante ou até ser
-    # descartado silenciosamente (não fica na fila pra depois), e a própria
-    # documentação do GitHub avisa que os minutos "redondos" são os de
-    # maior carga. Rodar a cada 15min (em vez de 30min) e fora dos minutos
-    # redondos reduz bastante a chance de passar um período inteiro sem
-    # nenhum disparo — o repo é público, então não há custo extra de
-    # minutos de Actions.
+    # O gatilho `schedule` do GitHub Actions não é garantido: em picos de
+    # carga (ou incidentes gerais do serviço — já vimos um "Major Outage"
+    # em Actions travar a rotina inteira num dia) os disparos podem
+    # atrasar bastante ou ser descartados silenciosamente, sem ficar na
+    # fila pra depois. Não tem como eliminar isso (é do lado do GitHub),
+    # mas duas coisas reduzem o estrago numa degradação parcial (não numa
+    # queda geral, essa não tem solução no nosso lado):
+    #   1. Minutos fora dos "redondos" (:00/:15/:30/:45), que a
+    #      documentação do GitHub aponta como os de maior carga.
+    #   2. Um baseline horário (minuto 44) independente da grade de
+    #      15min — dois `schedule` distintos aumentam a chance de pelo
+    #      menos um sobreviver quando só uma parte dos disparos é
+    #      descartada.
+    # O repo é público, então não há custo extra de minutos de Actions.
     - cron: "6,21,36,51 13-21 * * 1-5"
+    - cron: "44 13-21 * * 1-5"
     # Dashboard de performance: 1x/dia, perto das 18h BRT — não precisa da
     # frequência do monitor de bandas, e o histórico de preços é uma
     # chamada mais pesada por ticker. Minuto 58 (não :00) pelo mesmo motivo
@@ -32,6 +38,16 @@ on:
 
 permissions:
   contents: write
+
+# Depois de um incidente/degradação no GitHub Actions, vários disparos
+# atrasados podem sair juntos quando o serviço normaliza — sem isso, duas
+# execuções concorrentes disputariam o mesmo `git push` (config/*.csv,
+# last_status.yaml etc.) e uma delas falharia. cancel-in-progress: false
+# porque cada execução é relevante (não é um caso de "só a mais recente
+# importa", como um build de PR) — enfileira em vez de cancelar.
+concurrency:
+  group: monitor-carteira
+  cancel-in-progress: false
 
 jobs:
   monitor:
