@@ -24,11 +24,12 @@ def test_build_aporte_report_mostra_todos_os_ativos_e_o_valor_do_aporte():
 
     relatorio = build_aporte_report(plan, statuses, aporte=4770.13)
 
-    assert "R$ 4,770.13" in relatorio
+    assert "R$ 4.770,13" in relatorio
     for ticker in TARGETS:
         assert ticker in relatorio
     # CDIB11 já está acima do alvo nesse cenário: não deve receber compra.
-    assert "CDIB11: não comprar" in relatorio
+    assert "*CDIB11* — não comprar" in relatorio
+    assert "◾" in relatorio and "→ fica em" in relatorio
     assert all(s.status == STATUS_OK for s in plan.final_statuses)
     assert "não foi suficiente" not in relatorio
 

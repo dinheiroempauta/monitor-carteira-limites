@@ -76,7 +76,7 @@ def main() -> int:
         return 0
 
     try:
-        send_message(relatorio, bot_token, chat_id)
+        send_message(relatorio, bot_token, chat_id, parse_mode="Markdown")
     except TelegramSendError as exc:
         print(f"\n{exc}", file=sys.stderr)
         return 1

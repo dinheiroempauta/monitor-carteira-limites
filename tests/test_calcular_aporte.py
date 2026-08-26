@@ -32,7 +32,7 @@ def test_valor_invalido_notifica_erro_no_telegram(monkeypatch):
 
     enviado = {}
 
-    def _capturar_send(texto, bot_token, chat_id):
+    def _capturar_send(texto, bot_token, chat_id, parse_mode=None):
         enviado["texto"] = texto
 
     monkeypatch.setattr(calcular_aporte, "send_message", _capturar_send)
@@ -51,12 +51,14 @@ def test_fluxo_feliz_calcula_e_manda_relatorio_no_telegram(monkeypatch):
 
     enviado = {}
 
-    def _capturar_send(texto, bot_token, chat_id):
+    def _capturar_send(texto, bot_token, chat_id, parse_mode=None):
         enviado["texto"] = texto
+        enviado["parse_mode"] = parse_mode
 
     monkeypatch.setattr(calcular_aporte, "send_message", _capturar_send)
 
     assert calcular_aporte.main() == 0
-    assert "4,770.13" in enviado["texto"]
+    assert "4.770,13" in enviado["texto"]
     for ticker in PRECOS_FIXOS:
         assert ticker in enviado["texto"]
+    assert enviado["parse_mode"] == "Markdown"
