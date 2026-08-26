@@ -102,9 +102,9 @@ def build_aporte_report(plan: AportePlan, statuses_atuais: list[AssetStatus], ap
         qty_comprada = plan.purchases.get(s.ticker, 0)
         if qty_comprada:
             custo = qty_comprada * price[s.ticker]
-            linha_compra = f"comprar {_cotas(qty_comprada)} (R$ {_brl(custo)})"
+            linha_compra = f"{_cotas(qty_comprada)} (R$ {_brl(custo)})"
         else:
-            linha_compra = "não comprar"
+            linha_compra = "0 cotas"
         lines.append(f"◾ *{s.ticker}* — {linha_compra}")
         lines.append(
             f"→ fica em {s.pct:.1%} (alvo {s.target.target:.0%}, "
