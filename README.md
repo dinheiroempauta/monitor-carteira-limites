@@ -1,11 +1,13 @@
 # monitor-carteira-limites
 
 Monitor pessoal de alocação de carteira: avisa via Telegram quando algum
-ativo saiu da banda de tolerância e é preciso vender/comprar para
-rebalancear — ou, se ainda estiver dentro da banda, sugere como direcionar
-o próximo aporte. Roda de graça, a cada 30min no horário de pregão, via
-GitHub Actions — mas só manda mensagem quando o status de algum ativo
-muda, não a cada execução.
+ativo estourou o teto da banda de tolerância e sugere vender só o
+excedente até o teto (nunca até o alvo — minimiza a quantidade vendida e
+o custo/IR). O monitor nunca sugere compra: rebalancear via aporte é
+decidido à parte, sob demanda, via a skill/workflow de aporte (veja
+`.claude/skills/aporte-rebalanceamento/`). Roda de graça, a cada 30min no
+horário de pregão, via GitHub Actions — mas só manda mensagem quando o
+status de algum ativo muda, não a cada execução.
 
 Documentação completa da spec/plano/tasks em
 [`specs/001-monitor-carteira/`](specs/001-monitor-carteira/).
@@ -34,12 +36,11 @@ Documentação completa da spec/plano/tasks em
    ativo ficar oscilando bem em cima do limite) — execuções sem mudança
    ficam silenciosas (o relatório completo sempre fica no log da
    execução, se você quiser conferir).
-5. Se algum ativo saiu da banda, o alerta sempre prioriza resolver **só
-   com aporte** (comprando o que falta, sem vender nada) quando isso é
-   matematicamente possível. Só sugere venda quando não tem outro jeito —
-   e nesse caso mostra as duas opções lado a lado, com um lembrete de que
-   venda pode gerar IR. Se está tudo dentro da banda, manda uma sugestão
-   de para onde direcionar o próximo aporte.
+5. Se algum ativo estourou o teto da banda, o alerta sugere vender só o
+   excedente em relação ao teto (não até o alvo), com um lembrete de que
+   venda pode gerar IR. Ativo abaixo do piso não gera ação — só aparece
+   com o status "abaixo da banda" no relatório; corrigir isso é uma
+   decisão de aporte, feita à parte (ver skill/workflow de aporte).
 6. `config/history.csv` guarda a alocação (só %, sem R$) toda vez que um
    alerta é enviado — um histórico simples da evolução da carteira ao
    longo do tempo.

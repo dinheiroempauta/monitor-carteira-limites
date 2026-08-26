@@ -52,48 +52,16 @@ def _position_lines(statuses: list[AssetStatus], show_values: bool) -> list[str]
     return lines
 
 
-def _actions_section(
-    actions: list[RebalanceAction],
-    contribution_weights: dict[str, float],
-    aporte_fix: dict[str, float] | None,
-) -> list[str]:
+def _actions_section(actions: list[RebalanceAction]) -> list[str]:
+    """O monitor periódico só sugere venda (nunca compra — isso é decidido
+    à parte, via aporte). Sem ativo acima do teto, não há nada a fazer
+    aqui: o status de cada ativo já apareceu no bloco de posição acima."""
     if not actions:
-        lines = ["✅ Todos os ativos dentro da banda. Nenhuma venda necessária.", ""]
-        lines.append("Sugestão de destino do próximo aporte:")
-        for ticker, weight in sorted(contribution_weights.items(), key=lambda kv: -kv[1]):
-            if weight > 0:
-                lines.append(f"◾ *{ticker}*: {weight:.0%}")
-        return lines
+        return ["✅ Nenhuma venda necessária."]
 
-    tem_venda = any(a.action == "vender" for a in actions)
-
-    if not tem_venda:
-        # Só tem "comprar" no plano — os ativos que sobram já estão dentro
-        # da própria banda, então isso já é, na prática, um aporte (dinheiro
-        # novo), sem venda nem IR envolvidos.
-        lines = ["🟡 *Aporte necessário* (nenhuma venda envolvida):", ""]
-        for a in actions:
-            lines.append(f"◾ Comprar {_cotas(a.qty)} de *{a.ticker}* (aprox. R$ {_brl(a.approx_value)})")
-            lines.append("")
-        return lines[:-1] if lines[-1] == "" else lines
-
-    lines = ["⚠️ *Rebalanceamento necessário*", ""]
-
-    if aporte_fix:
-        lines.append("Opção 1 — resolve só com aporte, sem vender nada:")
-        lines.append("")
-        for ticker, valor in sorted(aporte_fix.items(), key=lambda kv: -kv[1]):
-            lines.append(f"◾ Aportar R$ {_brl(valor)} em *{ticker}*")
-        lines.append("")
-        lines.append("Opção 2 (alternativa) — venda + compra:")
-        lines.append("")
-    else:
-        lines.append("Não dá pra resolver só com aporte (precisaria de um aporte grande "
-                      "demais). Venda recomendada:")
-        lines.append("")
-
+    lines = ["⚠️ *Venda recomendada* (excedente em relação ao teto da banda):", ""]
     for a in actions:
-        lines.append(f"◾ {a.action.upper()} {_cotas(a.qty)} de *{a.ticker}* (aprox. R$ {_brl(a.approx_value)})")
+        lines.append(f"◾ Vender {_cotas(a.qty)} de *{a.ticker}* (aprox. R$ {_brl(a.approx_value)})")
     lines.append("")
     lines.append(IR_NOTE)
     return lines
@@ -102,9 +70,7 @@ def _actions_section(
 def build_report(
     statuses: list[AssetStatus],
     actions: list[RebalanceAction],
-    contribution_weights: dict[str, float],
     quotas_metadata: dict,
-    aporte_fix: dict[str, float] | None = None,
     *,
     show_values: bool = True,
 ) -> str:
@@ -117,7 +83,7 @@ def build_report(
     lines.append(f"Posição atualizada em: {quotas_metadata.get('updated_at')} (fonte: {quotas_metadata.get('source')})")
     lines.append("")
 
-    lines.extend(_actions_section(actions, contribution_weights, aporte_fix))
+    lines.extend(_actions_section(actions))
 
     return "\n".join(lines)
 
