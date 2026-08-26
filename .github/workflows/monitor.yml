@@ -2,13 +2,24 @@ name: Monitor de Carteira
 
 on:
   schedule:
-    # Monitor de bandas: a cada 30min, das 10h às 18h (horário de Brasília,
+    # Monitor de bandas: a cada 15min, das 10h às 18h (horário de Brasília,
     # UTC-3 fixo — sem horário de verão), dias úteis. 13-21 em UTC.
-    - cron: "*/30 13-21 * * 1-5"
-    # Dashboard de performance: 1x/dia, às 18h BRT (21h UTC) — não precisa
-    # da frequência do monitor de bandas, e o histórico de preços é uma
-    # chamada mais pesada por ticker.
-    - cron: "0 21 * * 1-5"
+    #
+    # Minutos "6,21,36,51" (nunca em :00/:15/:30/:45) de propósito: o
+    # GitHub Actions não garante o horário exato de disparo de `schedule` —
+    # em picos de carga o disparo pode atrasar bastante ou até ser
+    # descartado silenciosamente (não fica na fila pra depois), e a própria
+    # documentação do GitHub avisa que os minutos "redondos" são os de
+    # maior carga. Rodar a cada 15min (em vez de 30min) e fora dos minutos
+    # redondos reduz bastante a chance de passar um período inteiro sem
+    # nenhum disparo — o repo é público, então não há custo extra de
+    # minutos de Actions.
+    - cron: "6,21,36,51 13-21 * * 1-5"
+    # Dashboard de performance: 1x/dia, perto das 18h BRT — não precisa da
+    # frequência do monitor de bandas, e o histórico de preços é uma
+    # chamada mais pesada por ticker. Minuto 58 (não :00) pelo mesmo motivo
+    # acima; se atrasar ou não disparar num dia, pega o dia seguinte.
+    - cron: "58 21 * * 1-5"
   workflow_dispatch:
     inputs:
       aporte:
@@ -38,6 +49,13 @@ jobs:
 
       - name: Instalar dependências
         run: pip install -r requirements.txt
+
+      - name: Checar se o agendamento ficou tempo demais sem disparar
+        env:
+          PYTHONPATH: src
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python scripts/checar_heartbeat.py
 
       - name: Importar notas de negociação por e-mail (se configurado)
         id: importar_notas
@@ -69,6 +87,16 @@ jobs:
           )
           "
 
+      - name: Notificar posição após nota(s) importada(s)
+        if: steps.importar_notas.outputs.notas_importadas != ''
+        env:
+          PYTHONPATH: src
+          BRAPI_TOKEN: ${{ secrets.BRAPI_TOKEN }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          NOTAS_IMPORTADAS_RESUMO: ${{ steps.importar_notas.outputs.notas_importadas }}
+        run: python scripts/notificar_posicao_apos_nota.py
+
       - name: Salvar transações importadas (se houver)
         run: |
           if [ -n "$(git status --porcelain -- config/transactions.csv config/processed_notas.txt)" ]; then
@@ -76,6 +104,16 @@ jobs:
             git config user.email "actions@users.noreply.github.com"
             git add config/transactions.csv config/processed_notas.txt
             git commit -m "chore: importa transações das notas de negociação por e-mail"
+            git push
+          fi
+
+      - name: Salvar timestamp da última execução (heartbeat)
+        run: |
+          if [ -n "$(git status --porcelain -- config/last_run_at.txt)" ]; then
+            git config user.name "monitor-carteira-bot"
+            git config user.email "actions@users.noreply.github.com"
+            git add config/last_run_at.txt
+            git commit -m "chore: atualiza heartbeat da última execução"
             git push
           fi
 
@@ -104,14 +142,14 @@ jobs:
           fi
 
       - name: Gerar dashboard de performance (1x/dia)
-        if: github.event_name == 'workflow_dispatch' || github.event.schedule == '0 21 * * 1-5'
+        if: github.event_name == 'workflow_dispatch' || github.event.schedule == '58 21 * * 1-5'
         continue-on-error: true
         env:
           PYTHONPATH: src
         run: python scripts/build_dashboard.py
 
       - name: Publicar dashboard (docs/index.html + wealth_history.csv) se mudou
-        if: github.event_name == 'workflow_dispatch' || github.event.schedule == '0 21 * * 1-5'
+        if: github.event_name == 'workflow_dispatch' || github.event.schedule == '58 21 * * 1-5'
         run: |
           # git status --porcelain (não git diff) porque wealth_history.csv
           # pode ser um arquivo novo/não rastreado da primeira vez.

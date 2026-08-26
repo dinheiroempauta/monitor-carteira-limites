@@ -145,6 +145,15 @@ def main() -> int:
     print(f"Importadas {len(new_lines)} transação(ões) de {len(newly_processed)} nota(s):")
     for linha in resumo:
         print(f"  - {linha}")
+
+    github_output = os.environ.get("GITHUB_OUTPUT")
+    if github_output:
+        with open(github_output, "a", encoding="utf-8") as f:
+            f.write("notas_importadas<<__NOTAS_EOF__\n")
+            for linha in resumo:
+                f.write(linha + "\n")
+            f.write("__NOTAS_EOF__\n")
+
     return 0
 
 
