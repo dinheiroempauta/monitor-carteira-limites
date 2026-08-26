@@ -38,7 +38,12 @@ def test_build_dashboard_html_embute_composicao_patrimonio_e_performance():
     assert "2026-08-24 10:00" in html
 
     dados = _extract_dados(html)
-    assert {"ticker": "B5P211", "pct": round(1000 / 1500 * 100, 2)} in dados["composicao"]
+    b5p211 = next(a for a in dados["composicao"] if a["ticker"] == "B5P211")
+    assert b5p211["pct"] == round(1000 / 1500 * 100, 2)
+    assert b5p211["alvo"] == 40.0
+    assert b5p211["min"] == 20.0
+    assert b5p211["max"] == 50.0
+    assert b5p211["status"] == "acima_da_banda"  # 1000/1500=66.7%, acima do teto de 50%
     assert dados["patrimonio"] == [
         {"data": "2026-01-01", "valor": 1000.0},
         {"data": "2026-02-01", "valor": 1100.0},

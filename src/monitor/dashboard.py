@@ -46,12 +46,13 @@ _TEMPLATE = r"""<!doctype html>
 <title>Performance da Carteira</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <style>
-  :root {{ --maxw: 1200px; }}
+  :root {{ --maxw: 1440px; }}
   main {{ max-width: var(--maxw); margin: 0 auto; padding: 40px 24px 90px; }}
   .eyebrow {{ margin-top: 0; }}
-  .dash-grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 28px; }}
-  @media (max-width: 800px) {{ .dash-grid {{ grid-template-columns: 1fr; }} }}
-  .dash-full {{ grid-column: 1 / -1; }}
+  .dash-grid {{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 28px; }}
+  @media (max-width: 1000px) {{ .dash-grid {{ grid-template-columns: 1fr 1fr; }} }}
+  @media (max-width: 640px) {{ .dash-grid {{ grid-template-columns: 1fr; }} }}
+  .chart-svg-wrap {{ position: relative; height: 280px; }}
   .chart-svg-wrap canvas {{ max-width: 100%; }}
 
   .field-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(150px,1fr)); gap: 14px 16px; align-items: end; margin-bottom: 8px; }}
@@ -90,20 +91,20 @@ _TEMPLATE = r"""<!doctype html>
 
   <div class="dash-grid">
     <div class="chart-card">
-      <div class="chart-head"><div class="chart-title">Composição atual</div></div>
+      <div class="chart-head"><div class="chart-title">Alvo, banda e posição atual</div></div>
       <div class="chart-svg-wrap"><canvas id="composicao"></canvas></div>
     </div>
-    <div class="chart-card dash-full">
+    <div class="chart-card">
       <div class="chart-head"><div class="chart-title">Patrimônio ao longo do tempo</div></div>
       <div class="chart-svg-wrap"><canvas id="patrimonio"></canvas></div>
     </div>
-    <div class="chart-card dash-full">
+    <div class="chart-card">
       <div class="chart-head"><div class="chart-title">Performance nominal vs. real (descontada a inflação)</div></div>
       <div class="chart-svg-wrap"><canvas id="performance"></canvas></div>
     </div>
-
-    {form_section}
   </div>
+
+  {form_section}
 </main>
 
 <footer>
@@ -145,16 +146,60 @@ function montarGraficos() {{
   charts.forEach(c => c.destroy());
   charts = [];
 
+  const statusCor = {{ ok: cor.green, abaixo_da_banda: cor.gold, acima_da_banda: cor.brick }};
+
   charts.push(new Chart(document.getElementById('composicao'), {{
-    type: 'doughnut',
     data: {{
       labels: dados.composicao.map(a => a.ticker),
-      datasets: [{{ data: dados.composicao.map(a => a.pct), backgroundColor: [cor.green, cor.gold, cor.brick, cor.muted, cor.ink] }}]
+      datasets: [
+        {{
+          type: 'bar',
+          label: 'Banda',
+          data: dados.composicao.map(a => [a.min, a.max]),
+          backgroundColor: cor.line,
+          borderRadius: 3,
+          barPercentage: 0.5,
+          order: 2,
+        }},
+        {{
+          type: 'line',
+          label: 'Alvo',
+          data: dados.composicao.map(a => a.alvo),
+          showLine: false,
+          pointStyle: 'line',
+          pointRadius: 16,
+          pointBorderWidth: 3,
+          pointBorderColor: cor.ink,
+          order: 1,
+        }},
+        {{
+          type: 'line',
+          label: 'Atual',
+          data: dados.composicao.map(a => a.pct),
+          showLine: false,
+          pointStyle: 'circle',
+          pointRadius: 6,
+          pointBackgroundColor: dados.composicao.map(a => statusCor[a.status]),
+          pointBorderColor: dados.composicao.map(a => statusCor[a.status]),
+          order: 0,
+        }},
+      ]
     }},
     options: {{
+      interaction: {{ mode: 'index', intersect: false }},
+      scales: {{
+        x: {{ ticks: {{ color: cor.ink }}, grid: {{ display: false }} }},
+        y: {{ ticks: {{ color: cor.muted, callback: v => fmtPct(v) }}, grid: {{ color: cor.line }} }}
+      }},
       plugins: {{
         legend: {{ labels: {{ color: cor.ink }} }},
-        tooltip: {{ callbacks: {{ label: c => `${{c.label}}: ${{fmtPct(c.raw)}}` }} }}
+        tooltip: {{
+          callbacks: {{
+            label: c => c.dataset.label === 'Banda'
+              ? `Banda: ${{fmtPct(c.raw[0])}} – ${{fmtPct(c.raw[1])}}`
+              : `${{c.dataset.label}}: ${{fmtPct(c.raw)}}`
+          }}
+        }}
       }}
     }}
   }}));
@@ -163,9 +208,10 @@ function montarGraficos() {{
     type: 'line',
     data: {{
       labels: dados.patrimonio.map(p => p.data),
-      datasets: [{{ label: 'Patrimônio', data: dados.patrimonio.map(p => p.valor), borderColor: cor.green, backgroundColor: cor.green, tension: 0.15 }}]
+      datasets: [{{ label: 'Patrimônio', data: dados.patrimonio.map(p => p.valor), borderColor: cor.green, backgroundColor: cor.green, tension: 0.15, pointHoverRadius: 5 }}]
     }},
     options: {{
+      interaction: {{ mode: 'index', intersect: false }},
       scales: {{
         x: {{ ticks: {{ color: cor.muted }}, grid: {{ color: cor.line }} }},
         y: {{ ticks: {{ color: cor.muted, callback: v => fmtBRL(v) }}, grid: {{ color: cor.line }} }}
@@ -182,11 +228,12 @@ function montarGraficos() {{
     data: {{
       labels: dados.performance.map(p => p.data),
       datasets: [
-        {{ label: 'Nominal', data: dados.performance.map(p => p.nominal), borderColor: cor.green, backgroundColor: cor.green, tension: 0.15 }},
-        {{ label: 'Real (descontado IPCA)', data: dados.performance.map(p => p.real), borderColor: cor.gold, backgroundColor: cor.gold, tension: 0.15 }}
+        {{ label: 'Nominal', data: dados.performance.map(p => p.nominal), borderColor: cor.green, backgroundColor: cor.green, tension: 0.15, pointHoverRadius: 5 }},
+        {{ label: 'Real (descontado IPCA)', data: dados.performance.map(p => p.real), borderColor: cor.gold, backgroundColor: cor.gold, tension: 0.15, pointHoverRadius: 5 }}
       ]
     }},
     options: {{
+      interaction: {{ mode: 'index', intersect: false }},
       scales: {{
         x: {{ ticks: {{ color: cor.muted }}, grid: {{ color: cor.line }} }},
         y: {{ ticks: {{ color: cor.muted, callback: v => fmtPct(v) }}, grid: {{ color: cor.line }} }}
@@ -223,7 +270,7 @@ if (window.matchMedia) {{
 
 # Bloco do formulário de registro de transação — mantido intacto, mas não
 # renderizado por padrão (ver SHOW_TRANSACTION_FORM no topo do arquivo).
-_FORM_SECTION_HTML = """<div class="chart-card dash-full">
+_FORM_SECTION_HTML = """<div class="chart-card" style="margin-top: 20px;">
     <div class="chart-head"><div class="chart-title">➕ Registrar compra ou venda</div></div>
 
     <div id="token-setup" class="token-setup" style="display:none;">
@@ -429,7 +476,17 @@ def build_dashboard_html(
     config.load_wealth_history) — cada linha tem date/wealth/invested/
     nominal_return/real_return como strings (vindas do CSV)."""
     dados = {
-        "composicao": [{"ticker": s.ticker, "pct": round(s.pct * 100, 2)} for s in statuses],
+        "composicao": [
+            {
+                "ticker": s.ticker,
+                "pct": round(s.pct * 100, 2),
+                "alvo": round(s.target.target * 100, 2),
+                "min": round(s.target.min * 100, 2),
+                "max": round(s.target.max * 100, 2),
+                "status": s.status,
+            }
+            for s in statuses
+        ],
         "patrimonio": [{"data": r["date"], "valor": round(float(r["wealth"]), 2)} for r in wealth_history],
         "performance": [
             {
