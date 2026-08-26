@@ -1,23 +1,30 @@
 # Alocação-alvo e banda de tolerância da carteira.
 #
 # target = alocação ideal de cada ativo (a soma de todos precisa dar 100%).
-# banda_pp = quantos pontos percentuais pra cima e pra baixo do target cada
-# ativo pode variar antes de sair da banda — mesmo fator pra todos. Ex.:
-# banda_pp: 0.15 com target: 0.40 dá banda de 25%-55% (25% se estourar 0,
-# vira 0%; 100% se estourar 1, vira 100% — sem min/max negativo ou > 100%).
+# banda_pp = quantos pontos percentuais pra cima e pra baixo do target esse
+# ativo pode variar antes de sair da banda. Cada ativo pode ter o próprio
+# (como abaixo); o banda_pp no topo do arquivo só entra como padrão pra um
+# ativo que não definir o seu. min/max são recortados em [0, 1] (ex.: 5%
+# de alvo com banda de 10pp geraria piso negativo — vira 0% em vez disso).
 #
-# Pra mudar só os alvos: edite os "target" abaixo (a soma tem que continuar
-# em 1.0). Pra mudar a largura da banda de todos os ativos de uma vez: edite
-# só o banda_pp — não precisa tocar em cada ativo individualmente.
+# Pra mudar só os alvos: edite os "target" (a soma tem que continuar em
+# 1.0). Pra mudar a banda de um ativo específico: edite o "banda_pp" dele.
+# Pra mudar a banda-padrão de quem não tem "banda_pp" próprio: edite o
+# banda_pp do topo.
 banda_pp: 0.15
 assets:
   B5P211:
     target: 0.40
+    banda_pp: 0.10
   VWRA11:
     target: 0.30
+    banda_pp: 0.20
   DIVO11:
     target: 0.20
+    banda_pp: 0.20
   CDIB11:
     target: 0.05
+    banda_pp: 0.10
   GOLD11:
     target: 0.05
+    banda_pp: 0.05

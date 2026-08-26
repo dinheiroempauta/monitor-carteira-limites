@@ -83,6 +83,43 @@ def test_load_portfolio_falha_quando_targets_nao_somam_100_por_cento(tmp_path):
         load_portfolio(path)
 
 
+def test_load_portfolio_banda_pp_por_ativo_sobrepoe_o_padrao(tmp_path):
+    path = tmp_path / "portfolio.yaml"
+    data = {
+        "banda_pp": 0.15,  # padrão, só vale pra quem não tiver o próprio
+        "assets": {
+            "B5P211": {"target": 0.40, "banda_pp": 0.10},
+            "VWRA11": {"target": 0.30, "banda_pp": 0.20},
+            "DIVO11": {"target": 0.30},  # sem banda_pp próprio, usa o padrão (0.15)
+        },
+    }
+    path.write_text(yaml.safe_dump(data), encoding="utf-8")
+
+    assets = load_portfolio(path)
+
+    assert (assets["B5P211"].min, assets["B5P211"].max) == (pytest.approx(0.30), pytest.approx(0.50))
+    assert (assets["VWRA11"].min, assets["VWRA11"].max) == (pytest.approx(0.10), pytest.approx(0.50))
+    assert (assets["DIVO11"].min, assets["DIVO11"].max) == (pytest.approx(0.15), pytest.approx(0.45))
+
+
+def test_load_portfolio_falha_sem_banda_pp_proprio_nem_padrao(tmp_path):
+    path = tmp_path / "portfolio.yaml"
+    data = {"assets": {"B5P211": {"target": 1.0}}}  # sem banda_pp no topo, nem no ativo
+    path.write_text(yaml.safe_dump(data), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="banda_pp"):
+        load_portfolio(path)
+
+
+def test_load_portfolio_falha_com_banda_pp_do_ativo_fora_do_intervalo(tmp_path):
+    path = tmp_path / "portfolio.yaml"
+    data = {"banda_pp": 0.15, "assets": {"B5P211": {"target": 1.0, "banda_pp": 0}}}
+    path.write_text(yaml.safe_dump(data), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="banda_pp"):
+        load_portfolio(path)
+
+
 def test_load_last_status_sem_arquivo_retorna_vazio(tmp_path):
     assert load_last_status(tmp_path / "nao-existe.yaml") == {}
 
