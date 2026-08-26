@@ -16,6 +16,14 @@ STATUS_LABEL = {
     "ok": "✅ dentro da banda",
 }
 
+# Mesmo texto de STATUS_LABEL, mas capitalizado — usado como linha própria
+# (não no meio de frase) no bloco de posição do monitor periódico.
+STATUS_LABEL_LINHA = {
+    STATUS_ABAIXO: "🔵 Abaixo da banda",
+    STATUS_ACIMA: "🔴 Acima da banda",
+    "ok": "✅ Dentro da banda",
+}
+
 IR_NOTE = (
     "Lembrete: venda pode gerar IR (isenções e alíquotas variam por tipo de "
     "ativo — confira antes de vender)."
@@ -34,12 +42,12 @@ def _brl(valor: float) -> str:
 def _position_lines(statuses: list[AssetStatus], show_values: bool) -> list[str]:
     lines = []
     for s in statuses:
-        lines.append(
-            f"◾ *{s.ticker}* — {s.pct:.1%} (alvo {s.target.target:.0%}, "
-            f"banda {s.target.min:.0%}-{s.target.max:.0%}) {STATUS_LABEL[s.status]}"
-        )
+        lines.append(f"◾ *{s.ticker}* = {s.pct:.1%}")
+        lines.append(f"◾ Alvo = {s.target.target:.0%}")
+        lines.append(f"◾ Banda = {s.target.min:.0%}-{s.target.max:.0%}")
         if show_values:
-            lines.append(f"→ {_cotas(s.qty)} × R$ {_brl(s.price)} = R$ {_brl(s.value)}")
+            lines.append(f"◾ Valor = R$ {_brl(s.value)} ({_cotas(s.qty)} × R$ {_brl(s.price)})")
+        lines.append(STATUS_LABEL_LINHA[s.status])
         lines.append("")
     return lines
 
