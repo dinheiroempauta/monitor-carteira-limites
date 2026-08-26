@@ -25,13 +25,29 @@ class AssetTarget:
 
 
 def load_portfolio(path: Path = PORTFOLIO_PATH) -> dict[str, AssetTarget]:
+    """Carrega a alocação-alvo e deriva min/max de cada ativo a partir de um
+    único `banda_pp` (pontos percentuais pra cima/baixo do target, igual pra
+    todos) — trocar a largura da banda de toda a carteira é editar um
+    número só, não 2 por ativo. min/max são recortados em [0, 1] (uma banda
+    de ±15pp num target de 5% não pode gerar um piso negativo)."""
     data = yaml.safe_load(path.read_text())
+
+    if "banda_pp" not in data:
+        raise ValueError("portfolio.yaml precisa definir 'banda_pp' (pontos percentuais da banda, ex.: 0.15)")
+    banda_pp = data["banda_pp"]
+    if not (0 < banda_pp <= 1):
+        raise ValueError(f"banda_pp deve estar entre 0 (exclusivo) e 1, veio {banda_pp!r}")
+
     assets = {}
     for ticker, cfg in data["assets"].items():
-        target = AssetTarget(ticker=ticker, target=cfg["target"], min=cfg["min"], max=cfg["max"])
+        target_pct = cfg["target"]
+        min_pct = max(0.0, target_pct - banda_pp)
+        max_pct = min(1.0, target_pct + banda_pp)
+        target = AssetTarget(ticker=ticker, target=target_pct, min=min_pct, max=max_pct)
         if not (0 <= target.min <= target.target <= target.max <= 1):
             raise ValueError(f"Banda inválida para {ticker}: min/target/max devem satisfazer 0<=min<=target<=max<=1")
         assets[ticker] = target
+
     total_target = sum(a.target for a in assets.values())
     if abs(total_target - 1.0) > 1e-6:
         raise ValueError(f"Os targets devem somar 100%, somaram {total_target:.2%}")
