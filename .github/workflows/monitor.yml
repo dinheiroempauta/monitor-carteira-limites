@@ -69,6 +69,16 @@ jobs:
           )
           "
 
+      - name: Notificar posição após nota(s) importada(s)
+        if: steps.importar_notas.outputs.notas_importadas != ''
+        env:
+          PYTHONPATH: src
+          BRAPI_TOKEN: ${{ secrets.BRAPI_TOKEN }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          NOTAS_IMPORTADAS_RESUMO: ${{ steps.importar_notas.outputs.notas_importadas }}
+        run: python scripts/notificar_posicao_apos_nota.py
+
       - name: Salvar transações importadas (se houver)
         run: |
           if [ -n "$(git status --porcelain -- config/transactions.csv config/processed_notas.txt)" ]; then
