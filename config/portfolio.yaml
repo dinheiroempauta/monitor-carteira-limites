@@ -18,13 +18,13 @@ assets:
     banda_pp: 0.10
   VWRA11:
     target: 0.30
-    banda_pp: 0.20
+    banda_pp: 0.15
   DIVO11:
     target: 0.20
-    banda_pp: 0.20
+    banda_pp: 0.15
   CDIB11:
     target: 0.05
     banda_pp: 0.10
   GOLD11:
     target: 0.05
-    banda_pp: 0.05
+    banda_pp: 0.10

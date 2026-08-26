@@ -11,10 +11,8 @@ from monitor.allocation import (
     STATUS_OK,
     aporte_quotas_plan,
     compute_statuses,
-    contribution_suggestion,
     effective_status_for_alerting,
     rebalance_plan,
-    resolve_via_aporte,
 )
 from monitor.config import AssetTarget
 
@@ -36,78 +34,50 @@ def test_tudo_dentro_da_banda_nao_gera_venda():
     assert rebalance_plan(statuses) == []
 
 
-def test_ativo_acima_do_teto_gera_venda():
-    # B5P211 muito acima do alvo (70% do total), estourando o teto de 50%
+def test_ativo_acima_do_teto_gera_venda_ate_o_teto_nao_ate_o_alvo():
+    # B5P211 muito acima do alvo (70% do total), estourando o teto de 50%.
+    # O monitor vende só o excedente até o TETO (50%), não até o alvo
+    # (40%) — minimiza a quantidade vendida (e o custo/IR de vender mais
+    # do que o necessário).
     prices = {t: 100.0 for t in TARGETS}
     holdings = {"B5P211": 70, "VWRA11": 15, "DIVO11": 10, "CDIB11": 2, "GOLD11": 3}
     statuses = compute_statuses(holdings, prices, TARGETS)
     actions = rebalance_plan(statuses)
     b5p211_actions = [a for a in actions if a.ticker == "B5P211"]
     assert len(b5p211_actions) == 1
-    assert b5p211_actions[0].action == "vender"
-    assert b5p211_actions[0].qty > 0
+    # venda pura: o total encolhe junto (dinheiro sai da carteira), então
+    # vender só "o excedente sobre o total atual" (2000/100=20 cotas)
+    # deixaria o pct ainda acima do teto. A conta certa resolve
+    # (valor-x)/(total-x)=teto: x=(7000-0.5*10000)/(1-0.5)=4000 -> 40 cotas,
+    # que traz o pct exatamente para 50% (3000/6000).
+    assert b5p211_actions[0].qty == 40
 
 
-def test_ativo_abaixo_do_piso_gera_compra():
-    # CDIB11 bem abaixo do piso de 5%
+def test_venda_recomendada_traz_o_pct_de_volta_pro_teto_considerando_total_menor():
+    # Confirma que a venda é "de verdade" suficiente: aplicando a
+    # quantidade sugerida (dinheiro saindo da carteira, total encolhendo
+    # junto), o % final do ativo fica <= teto — não uma venda insuficiente
+    # por ter usado o total de antes da venda como base de cálculo.
+    prices = {t: 100.0 for t in TARGETS}
+    holdings = {"B5P211": 70, "VWRA11": 15, "DIVO11": 10, "CDIB11": 2, "GOLD11": 3}
+    statuses = compute_statuses(holdings, prices, TARGETS)
+    b5p211 = next(s for s in statuses if s.ticker == "B5P211")
+    total = sum(s.value for s in statuses)
+
+    acao = next(a for a in rebalance_plan(statuses) if a.ticker == "B5P211")
+
+    novo_valor = b5p211.value - acao.approx_value
+    novo_total = total - acao.approx_value
+    assert novo_valor / novo_total <= b5p211.target.max + 1e-9
+
+
+def test_ativo_abaixo_do_piso_nao_gera_acao():
+    # O monitor periódico nunca sugere compra — abaixo do piso é só um
+    # alerta informativo (já aparece no status de cada ativo), sem ação.
     prices = {t: 100.0 for t in TARGETS}
     holdings = {"B5P211": 40, "VWRA11": 30, "DIVO11": 20, "CDIB11": 0, "GOLD11": 10}
     statuses = compute_statuses(holdings, prices, TARGETS)
-    actions = rebalance_plan(statuses)
-    cdib_actions = [a for a in actions if a.ticker == "CDIB11"]
-    assert len(cdib_actions) == 1
-    assert cdib_actions[0].action == "comprar"
-
-
-def test_sugestao_de_aporte_soma_100_por_cento_e_prioriza_maior_desvio():
-    prices = {t: 100.0 for t in TARGETS}
-    # tudo dentro da banda, mas CDIB11 relativamente mais abaixo do alvo
-    holdings = {"B5P211": 40, "VWRA11": 30, "DIVO11": 20, "CDIB11": 5, "GOLD11": 5}
-    holdings["CDIB11"] = 6  # ainda dentro da banda [5,15], mas abaixo do alvo 5%? ajusta pra baixo do alvo
-    statuses = compute_statuses(holdings, prices, TARGETS)
     assert rebalance_plan(statuses) == []
-    weights = contribution_suggestion(statuses)
-    assert abs(sum(weights.values()) - 1.0) < 1e-9
-
-
-def test_resolve_via_aporte_none_quando_tudo_ok():
-    prices = {t: 100.0 for t in TARGETS}
-    holdings = {"B5P211": 40, "VWRA11": 30, "DIVO11": 20, "CDIB11": 5, "GOLD11": 5}
-    statuses = compute_statuses(holdings, prices, TARGETS)
-    assert resolve_via_aporte(statuses) is None
-
-
-def test_resolve_via_aporte_calcula_valor_que_resolve_o_breach():
-    # só VWRA11 abaixo do piso de 30%; os demais com folga acima do
-    # próprio piso, então diluí-los um pouco pra corrigir VWRA11 não
-    # quebra mais nada.
-    prices = {t: 100.0 for t in TARGETS}
-    holdings = {"B5P211": 40, "VWRA11": 26, "DIVO11": 22, "CDIB11": 6, "GOLD11": 6}
-    statuses = compute_statuses(holdings, prices, TARGETS)
-    assert any(s.status != STATUS_OK for s in statuses)
-
-    aporte = resolve_via_aporte(statuses)
-    assert aporte is not None
-    assert sum(aporte.values()) > 0
-
-    # simula aplicar o aporte e confirma que tudo fica dentro da banda
-    total = sum(s.value for s in statuses)
-    novo_total = total + sum(aporte.values())
-    for s in statuses:
-        novo_valor = s.value + aporte.get(s.ticker, 0.0)
-        novo_pct = novo_valor / novo_total
-        assert s.target.min - 1e-6 <= novo_pct <= s.target.max + 1e-6
-
-
-def test_resolve_via_aporte_none_quando_diluir_quebraria_outro_ativo():
-    # cenário real: 3 ativos abaixo do alvo (VWRA11, DIVO11, GOLD11), mas
-    # diluir o suficiente pra corrigi-los derruba o CDIB11 (hoje ok, perto
-    # do próprio piso de 5%) pra fora da banda antes disso — não dá pra
-    # resolver só com aporte, é preciso vender/rebalancear.
-    prices = {"B5P211": 110.63, "VWRA11": 114.28, "DIVO11": 122.43, "CDIB11": 51.57, "GOLD11": 24.69}
-    holdings = {"B5P211": 65, "VWRA11": 46, "DIVO11": 29, "CDIB11": 24, "GOLD11": 36}
-    statuses = compute_statuses(holdings, prices, TARGETS)
-    assert resolve_via_aporte(statuses) is None
 
 
 def test_effective_status_segura_recuperacao_perto_da_borda():

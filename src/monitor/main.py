@@ -12,13 +12,7 @@ import os
 import sys
 import traceback
 
-from monitor.allocation import (
-    compute_statuses,
-    contribution_suggestion,
-    effective_status_for_alerting,
-    rebalance_plan,
-    resolve_via_aporte,
-)
+from monitor.allocation import compute_statuses, effective_status_for_alerting, rebalance_plan
 from monitor.config import (
     append_history,
     load_last_status,
@@ -72,11 +66,8 @@ def main() -> int:
         return 1
 
     actions = rebalance_plan(statuses)
-    contribution_weights = contribution_suggestion(statuses)
-    tem_venda = any(a.action == "vender" for a in actions)
-    aporte_fix = resolve_via_aporte(statuses) if tem_venda else None
 
-    log_report = build_report(statuses, actions, contribution_weights, quotas_metadata, aporte_fix, show_values=True)
+    log_report = build_report(statuses, actions, quotas_metadata, show_values=True)
     print(log_report)
 
     last_status = load_last_status()
@@ -87,9 +78,7 @@ def main() -> int:
         print("\n(Status de banda sem mudança desde o último alerta — Telegram não acionado.)", file=sys.stderr)
         return 0
 
-    telegram_report = build_report(
-        statuses, actions, contribution_weights, quotas_metadata, aporte_fix, show_values=False
-    )
+    telegram_report = build_report(statuses, actions, quotas_metadata, show_values=False)
     if bot_token and chat_id:
         try:
             send_message(telegram_report, bot_token, chat_id, parse_mode="Markdown")
