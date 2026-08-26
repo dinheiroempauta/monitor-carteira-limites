@@ -34,11 +34,13 @@ def _brl(valor: float) -> str:
 def _position_lines(statuses: list[AssetStatus], show_values: bool) -> list[str]:
     lines = []
     for s in statuses:
-        detalhe = f"{_cotas(s.qty)} × R$ {_brl(s.price)} = R$ {_brl(s.value)} (" if show_values else "("
         lines.append(
-            f"{s.ticker}: {detalhe}{s.pct:.1%} — alvo {s.target.target:.0%}, "
+            f"◾ *{s.ticker}* — {s.pct:.1%} (alvo {s.target.target:.0%}, "
             f"banda {s.target.min:.0%}-{s.target.max:.0%}) {STATUS_LABEL[s.status]}"
         )
+        if show_values:
+            lines.append(f"→ {_cotas(s.qty)} × R$ {_brl(s.price)} = R$ {_brl(s.value)}")
+        lines.append("")
     return lines
 
 
@@ -52,7 +54,7 @@ def _actions_section(
         lines.append("Sugestão de destino do próximo aporte:")
         for ticker, weight in sorted(contribution_weights.items(), key=lambda kv: -kv[1]):
             if weight > 0:
-                lines.append(f"- {ticker}: {weight:.0%}")
+                lines.append(f"◾ *{ticker}*: {weight:.0%}")
         return lines
 
     tem_venda = any(a.action == "vender" for a in actions)
@@ -63,23 +65,27 @@ def _actions_section(
         # novo), sem venda nem IR envolvidos.
         lines = ["🟡 *Aporte necessário* (nenhuma venda envolvida):", ""]
         for a in actions:
-            lines.append(f"- Comprar {_cotas(a.qty)} de {a.ticker} (aprox. R$ {_brl(a.approx_value)})")
-        return lines
+            lines.append(f"◾ Comprar {_cotas(a.qty)} de *{a.ticker}* (aprox. R$ {_brl(a.approx_value)})")
+            lines.append("")
+        return lines[:-1] if lines[-1] == "" else lines
 
     lines = ["⚠️ *Rebalanceamento necessário*", ""]
 
     if aporte_fix:
         lines.append("Opção 1 — resolve só com aporte, sem vender nada:")
+        lines.append("")
         for ticker, valor in sorted(aporte_fix.items(), key=lambda kv: -kv[1]):
-            lines.append(f"- Aportar R$ {_brl(valor)} em {ticker}")
+            lines.append(f"◾ Aportar R$ {_brl(valor)} em *{ticker}*")
         lines.append("")
         lines.append("Opção 2 (alternativa) — venda + compra:")
+        lines.append("")
     else:
         lines.append("Não dá pra resolver só com aporte (precisaria de um aporte grande "
                       "demais). Venda recomendada:")
+        lines.append("")
 
     for a in actions:
-        lines.append(f"- {a.action.upper()} {_cotas(a.qty)} de {a.ticker} (aprox. R$ {_brl(a.approx_value)})")
+        lines.append(f"◾ {a.action.upper()} {_cotas(a.qty)} de *{a.ticker}* (aprox. R$ {_brl(a.approx_value)})")
     lines.append("")
     lines.append(IR_NOTE)
     return lines
@@ -96,7 +102,6 @@ def build_report(
 ) -> str:
     lines = ["📊 *Monitor de Carteira*", ""]
     lines.extend(_position_lines(statuses, show_values))
-    lines.append("")
 
     if show_values:
         total = sum(s.value for s in statuses)
