@@ -10,6 +10,16 @@ description: >
 
 # Aporte e rebalanceamento
 
+Existe também um caminho que não depende desta skill nem de nenhum
+agente: o próprio `monitor.yml` tem um campo `aporte` no
+`workflow_dispatch` (visível no site/app do GitHub em "Run workflow").
+Preenchido, um step dedicado (`scripts/calcular_aporte.py`) busca a
+cotação, roda `aporte_quotas_plan` e manda o resultado direto no
+Telegram — sem terminal, sem script local, sem assinatura de agente
+nenhuma. Essa skill continua valendo para quando o pedido chega aqui no
+chat (ex.: "/aporte-rebalanceamento, tenho R$X"), mas vale saber que o
+usuário tem essa alternativa e pode preferir usá-la no dia a dia.
+
 Processo determinístico em duas etapas — nunca faça a conta de cabeça ou
 por estimativa: os preços vêm de uma execução real do workflow, e a
 distribuição das cotas vem de um script testado (`aporte_quotas_plan` em
