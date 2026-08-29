@@ -105,7 +105,6 @@ _TEMPLATE = r"""<!doctype html>
   .chart-svg-wrap {{ position: relative; flex: 1 1 auto; min-height: 0; }}
   .chart-svg-wrap canvas {{ max-width: 100%; }}
 
-  footer {{ flex: 0 0 auto; padding: 6px 28px !important; font-size: 12px !important; line-height: 1.4 !important; }}
   .masthead {{ flex: 0 0 auto; padding: 8px 24px !important; }}
 
   .field-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(150px,1fr)); gap: 14px 16px; align-items: end; margin-bottom: 8px; }}
@@ -163,11 +162,6 @@ _TEMPLATE = r"""<!doctype html>
 
   {form_section}
 </main>
-
-<footer>
-  Monitor de Carteira — ferramenta pessoal de acompanhamento de investimentos.<br>
-  Conteúdo educacional, não é recomendação de investimento.
-</footer>
 
 <script src="assets/site.js"></script>
 <script>
