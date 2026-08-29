@@ -64,7 +64,7 @@ _TEMPLATE = r"""<!doctype html>
   body {{ display: flex; flex-direction: column; min-height: 0; overflow: hidden; }}
   main {{
     max-width: var(--maxw); width: 100%; margin: 0 auto; box-sizing: border-box;
-    padding: 12px 28px 10px; flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0;
+    padding: 22px 28px 22px; flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0;
   }}
   .page-subheading {{ margin: 0 0 10px; font-size: 13.5px; }}
 
