@@ -23,7 +23,15 @@ TICKER_MAP = {
     "IT NOW DIPCA": "CDIB11",
 }
 
-_DATA_PREGAO_RE = re.compile(r"Data preg[aã]o\D*(\d{2})/(\d{2})/(\d{4})")
+# A nota tem dois layouts observados para o bloco "Nr. nota / Folha / Data
+# pregão": às vezes rótulo e valor se alternam linha a linha ("Data
+# pregão\n18/08/2026"), às vezes os três rótulos vêm empilhados seguidos
+# pelos três valores juntos numa linha de tabela ("Data pregão\n142937936 1
+# 25/08/2026" — nº da nota e folha ANTES da data, na mesma linha). `\D*`
+# (não-dígito) não cobre esse segundo caso, pois há dígitos (nº da
+# nota/folha) entre o rótulo e a data; `.*?` com DOTALL casa qualquer coisa
+# até a data mais próxima do rótulo, cobrindo os dois layouts.
+_DATA_PREGAO_RE = re.compile(r"Data preg[aã]o.*?(\d{2})/(\d{2})/(\d{4})", re.DOTALL)
 
 # Ex.: "1-BOVESPA C VISTA INVESTOVWRA CI @ 12 115,55 1.386,60 D"
 #      "7-BOVESPA C VISTA IT NOW B5P2 F11 @ 11 110,32 1.213,52 D"
