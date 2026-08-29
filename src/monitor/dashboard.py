@@ -49,10 +49,32 @@ _TEMPLATE = r"""<!doctype html>
   :root {{ --maxw: 1440px; }}
   main {{ max-width: var(--maxw); margin: 0 auto; padding: 40px 24px 90px; }}
   .eyebrow {{ margin-top: 0; }}
-  .dash-grid {{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 28px; }}
-  @media (max-width: 1000px) {{ .dash-grid {{ grid-template-columns: 1fr 1fr; }} }}
-  @media (max-width: 640px) {{ .dash-grid {{ grid-template-columns: 1fr; }} }}
-  .chart-svg-wrap {{ position: relative; height: 280px; }}
+  .kpi-row {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 16px; margin-top: 28px; }}
+  @media (max-width: 480px) {{ .kpi-row {{ grid-template-columns: 1fr 1fr; }} }}
+  .kpi-tile {{ border: 1px solid var(--line-strong); background: var(--paper-raised); border-radius: 3px; padding: 18px 20px; }}
+  .kpi-tile .kpi-label {{ font-family: var(--font-mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }}
+  .kpi-tile .kpi-value {{ font-family: var(--font-mono); font-size: 1.65rem; font-variant-numeric: tabular-nums; }}
+  .kpi-tile .kpi-value.positive {{ color: var(--green); }}
+  .kpi-tile .kpi-value.negative {{ color: var(--brick); }}
+
+  /* Bento: composição ocupa a coluna esquerda inteira (2 linhas);
+     patrimônio e performance dividem a coluna direita, empilhados —
+     assim as três áreas usam a largura e a altura da tela de forma
+     proporcional ao que cada uma precisa mostrar, em vez de três
+     colunas iguais com muito espaço vazio. */
+  .dash-grid {{ display: grid; grid-template-columns: 1.1fr 1.6fr; gap: 20px; margin-top: 20px; }}
+  .dash-grid .chart-card {{ margin: 0; }}
+  .chart-card.tall {{ grid-column: 1; grid-row: 1 / 3; }}
+  .chart-card.wide-top {{ grid-column: 2; grid-row: 1; }}
+  .chart-card.wide-bottom {{ grid-column: 2; grid-row: 2; }}
+  .chart-card.tall .chart-svg-wrap {{ height: 600px; }}
+  .chart-card.wide-top .chart-svg-wrap, .chart-card.wide-bottom .chart-svg-wrap {{ height: 290px; }}
+  @media (max-width: 1000px) {{
+    .dash-grid {{ grid-template-columns: 1fr; }}
+    .chart-card.tall, .chart-card.wide-top, .chart-card.wide-bottom {{ grid-column: auto; grid-row: auto; }}
+    .chart-card.tall .chart-svg-wrap, .chart-card.wide-top .chart-svg-wrap, .chart-card.wide-bottom .chart-svg-wrap {{ height: 320px; }}
+  }}
+  .chart-svg-wrap {{ position: relative; }}
   .chart-svg-wrap canvas {{ max-width: 100%; }}
 
   .field-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(150px,1fr)); gap: 14px 16px; align-items: end; margin-bottom: 8px; }}
@@ -89,16 +111,18 @@ _TEMPLATE = r"""<!doctype html>
   <h1 class="page-heading">Performance da Carteira</h1>
   <p class="page-subheading">Atualizado em {generated_at} — patrimônio e performance acumulam a partir do dia em que o dashboard começou a rodar, sem reconstruir o passado.</p>
 
+  {kpi_section}
+
   <div class="dash-grid">
-    <div class="chart-card">
+    <div class="chart-card tall">
       <div class="chart-head"><div class="chart-title">Alvo, banda e posição atual</div></div>
       <div class="chart-svg-wrap"><canvas id="composicao"></canvas></div>
     </div>
-    <div class="chart-card">
+    <div class="chart-card wide-top">
       <div class="chart-head"><div class="chart-title">Patrimônio ao longo do tempo</div></div>
       <div class="chart-svg-wrap"><canvas id="patrimonio"></canvas></div>
     </div>
-    <div class="chart-card">
+    <div class="chart-card wide-bottom">
       <div class="chart-head"><div class="chart-title">Performance nominal vs. real (descontada a inflação)</div></div>
       <div class="chart-svg-wrap"><canvas id="performance"></canvas></div>
     </div>
@@ -497,6 +521,48 @@ def build_dashboard_html(
             for r in wealth_history
         ],
     }
+    ultimo = wealth_history[-1] if wealth_history else None
+    fora_da_banda = sum(1 for s in statuses if s.status != "ok")
+
+    def _fmt_brl(v: float) -> str:
+        return f"R$ {v:,.2f}".replace(",", "_").replace(".", ",").replace("_", ".")
+
+    def _fmt_pct(v: float) -> str:
+        sinal = "+" if v >= 0 else ""
+        return f"{sinal}{v * 100:.1f}%".replace(".", ",")
+
+    if ultimo is None:
+        kpi_tiles = [
+            ("Patrimônio atual", "—", ""),
+            ("Total investido", "—", ""),
+            ("Retorno nominal", "—", ""),
+            ("Retorno real (IPCA)", "—", ""),
+        ]
+    else:
+        nominal = float(ultimo["nominal_return"])
+        real = ultimo["real_return"]
+        real = float(real) if real not in ("", None) else None
+        kpi_tiles = [
+            ("Patrimônio atual", _fmt_brl(float(ultimo["wealth"])), ""),
+            ("Total investido", _fmt_brl(float(ultimo["invested"])), ""),
+            ("Retorno nominal", _fmt_pct(nominal), "positive" if nominal >= 0 else "negative"),
+            (
+                "Retorno real (IPCA)",
+                _fmt_pct(real) if real is not None else "—",
+                ("positive" if real >= 0 else "negative") if real is not None else "",
+            ),
+        ]
+    kpi_tiles.append((
+        "Ativos fora da banda",
+        f"{fora_da_banda} de {len(statuses)}" if statuses else "—",
+        "negative" if fora_da_banda else "positive",
+    ))
+    kpi_section = '<div class="kpi-row">\n' + "\n".join(
+        f'    <div class="kpi-tile"><div class="kpi-label">{label}</div>'
+        f'<div class="kpi-value {cls}">{value}</div></div>'
+        for label, value, cls in kpi_tiles
+    ) + "\n  </div>"
+
     if SHOW_TRANSACTION_FORM:
         form_section = _FORM_SECTION_HTML
         form_script = _FORM_SCRIPT_TEMPLATE.format(
@@ -512,6 +578,7 @@ def build_dashboard_html(
     return _TEMPLATE.format(
         generated_at=generated_at,
         dados_json=json.dumps(dados, ensure_ascii=False),
+        kpi_section=kpi_section,
         form_section=form_section,
         form_script=form_script,
     )
