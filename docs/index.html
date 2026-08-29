@@ -14,58 +14,66 @@
 <title>Performance da Carteira</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <style>
-  :root { --maxw: 1440px; }
+  /* Sem eyebrow/H1 (removidos), a página usa quase a largura inteira da
+     tela — maxw bem mais folgado que o padrão do blog (1440px), só pra
+     não esticar demais em monitores ultrawide. */
+  :root { --maxw: 2200px; }
 
   /* Tudo cabe numa tela só, sem scroll em nenhuma direção (a 100% de
      zoom): a página inteira é uma coluna flex com a altura exata da
-     viewport, e a única área que "respira" de verdade — o dash-grid —
-     recebe o espaço que sobra (flex: 1) depois de masthead, cabeçalho,
-     KPIs e rodapé, todos compactados ao essencial. min-height: 0 em
+     viewport, e a única área que "respira" de verdade — o corpo do
+     dashboard — recebe o espaço que sobra (flex: 1) depois de masthead,
+     subtítulo e rodapé, todos compactados ao essencial. min-height: 0 em
      cada nível do flex/grid é o que impede o conteúdo de estourar e
      forçar rolagem. Abaixo de 900px de largura isso deixa de fazer
-     sentido (3 gráficos empilhados não cabem em altura nenhuma) — nesse
+     sentido (gráficos empilhados não cabem em altura nenhuma) — nesse
      ponto volta-se a rolar normalmente. */
   html, body { height: 100%; }
   body { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
   main {
     max-width: var(--maxw); width: 100%; margin: 0 auto; box-sizing: border-box;
-    padding: 14px 24px 10px; flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0;
+    padding: 12px 28px 10px; flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0;
   }
-  .eyebrow { margin: 0; }
-  .page-heading { margin: 2px 0; font-size: 1.7rem; }
   .page-subheading { margin: 0 0 10px; font-size: 13.5px; }
 
-  .kpi-row { flex: 0 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; margin: 0 0 12px; }
-  .kpi-tile { border: 1px solid var(--line-strong); background: var(--paper-raised); border-radius: 3px; padding: 10px 16px; }
-  .kpi-tile .kpi-label { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
-  .kpi-tile .kpi-value { font-family: var(--font-mono); font-size: 1.3rem; font-variant-numeric: tabular-nums; }
+  .kpi-row { flex: 1 1 auto; display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+  @media (max-width: 1300px) { .kpi-row { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); } }
+  .kpi-tile { border: 1px solid var(--line-strong); background: var(--paper-raised); border-radius: 3px; padding: 10px 14px; display: flex; flex-direction: column; justify-content: center; overflow: hidden; }
+  .kpi-tile .kpi-label { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; white-space: nowrap; }
+  .kpi-tile .kpi-value { font-family: var(--font-mono); font-size: 1.1rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
   .kpi-tile .kpi-value.positive { color: var(--green); }
   .kpi-tile .kpi-value.negative { color: var(--brick); }
 
-  /* Bento: composição ocupa a coluna esquerda inteira (2 linhas);
-     patrimônio e performance dividem a coluna direita, empilhados —
-     assim as três áreas usam a largura e a altura disponíveis de forma
-     proporcional ao que cada uma precisa mostrar, em vez de três
-     colunas iguais com muito espaço vazio. */
-  .dash-grid { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: 1.1fr 1.6fr; grid-template-rows: 1fr 1fr; gap: 14px; }
-  .dash-grid .chart-card { margin: 0; min-height: 0; display: flex; flex-direction: column; padding: 12px 16px 10px; }
-  .chart-card.tall { grid-column: 1; grid-row: 1 / 3; }
-  .chart-card.wide-top { grid-column: 2; grid-row: 1; }
-  .chart-card.wide-bottom { grid-column: 2; grid-row: 2; }
+  /* "Alvo, banda e posição atual" divide a mesma linha (mesma altura)
+     dos cards de KPI, em vez de ocupar uma coluna inteira e alta —
+     assim toda a largura e altura restantes ficam livres pros dois
+     gráficos de linha, que são os que mais se beneficiam de serem
+     compridos na horizontal (mais pontos de tempo visíveis por vez). */
+  .top-row { flex: 0 0 auto; height: 210px; display: flex; align-items: stretch; gap: 14px; margin-bottom: 14px; }
+  .top-row .kpi-row { flex: 1 1 auto; }
+  .top-row .chart-card { flex: 0 0 400px; }
+  @media (max-width: 1300px) { .top-row .chart-card { flex-basis: 320px; } }
+
+  .line-charts { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 14px; }
+  .line-charts .chart-card { flex: 1 1 0; }
+
+  .chart-card { margin: 0; min-height: 0; display: flex; flex-direction: column; padding: 12px 16px 10px; }
   .chart-head { flex: 0 0 auto; margin-bottom: 4px; }
   .chart-title { font-size: 0.95rem; }
   @media (max-width: 900px) {
     html, body { height: auto; overflow: visible; }
     main { display: block; padding: 24px; }
-    .dash-grid { display: grid; grid-template-columns: 1fr; grid-template-rows: none; }
-    .chart-card.tall, .chart-card.wide-top, .chart-card.wide-bottom { grid-column: auto; grid-row: auto; }
-    .dash-grid .chart-card { margin: 0 0 14px; }
-    .chart-card.tall .chart-svg-wrap, .chart-card.wide-top .chart-svg-wrap, .chart-card.wide-bottom .chart-svg-wrap { height: 320px; flex: none; }
+    .top-row { display: block; height: auto; }
+    .top-row .kpi-row { margin-bottom: 14px; }
+    .top-row .chart-card { flex-basis: auto; }
+    .line-charts { display: block; }
+    .chart-card { margin: 0 0 14px; }
+    .top-row .chart-card .chart-svg-wrap, .line-charts .chart-card .chart-svg-wrap { height: 320px; flex: none; }
   }
   .chart-svg-wrap { position: relative; flex: 1 1 auto; min-height: 0; }
   .chart-svg-wrap canvas { max-width: 100%; }
 
-  footer { flex: 0 0 auto; padding: 6px 24px !important; font-size: 12px !important; line-height: 1.4 !important; }
+  footer { flex: 0 0 auto; padding: 6px 28px !important; font-size: 12px !important; line-height: 1.4 !important; }
   .masthead { flex: 0 0 auto; padding: 8px 24px !important; }
 
   .field-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px,1fr)); gap: 14px 16px; align-items: end; margin-bottom: 8px; }
@@ -98,28 +106,28 @@
 </div>
 
 <main>
-  <p class="eyebrow">Carteira pessoal</p>
-  <h1 class="page-heading">Performance da Carteira</h1>
-  <p class="page-subheading">Atualizado em 2026-08-29 20:03 UTC — patrimônio e performance acumulam a partir do dia em que o dashboard começou a rodar, sem reconstruir o passado.</p>
+  <p class="page-subheading">Atualizado em 2026-08-29 20:21 UTC — patrimônio e performance acumulam a partir do dia em que o dashboard começou a rodar, sem reconstruir o passado.</p>
 
-  <div class="kpi-row">
+  <div class="top-row">
+    <div class="kpi-row">
     <div class="kpi-tile"><div class="kpi-label">Patrimônio atual</div><div class="kpi-value ">R$ 23.053,01</div></div>
     <div class="kpi-tile"><div class="kpi-label">Total investido</div><div class="kpi-value ">R$ 22.872,07</div></div>
     <div class="kpi-tile"><div class="kpi-label">Retorno nominal</div><div class="kpi-value positive">+0,8%</div></div>
     <div class="kpi-tile"><div class="kpi-label">Retorno real (IPCA)</div><div class="kpi-value positive">+0,7%</div></div>
     <div class="kpi-tile"><div class="kpi-label">Ativos fora da banda</div><div class="kpi-value positive">0 de 5</div></div>
   </div>
-
-  <div class="dash-grid">
-    <div class="chart-card tall">
+    <div class="chart-card">
       <div class="chart-head"><div class="chart-title">Alvo, banda e posição atual</div></div>
       <div class="chart-svg-wrap"><canvas id="composicao"></canvas></div>
     </div>
-    <div class="chart-card wide-top">
+  </div>
+
+  <div class="line-charts">
+    <div class="chart-card">
       <div class="chart-head"><div class="chart-title">Patrimônio ao longo do tempo</div></div>
       <div class="chart-svg-wrap"><canvas id="patrimonio"></canvas></div>
     </div>
-    <div class="chart-card wide-bottom">
+    <div class="chart-card">
       <div class="chart-head"><div class="chart-title">Performance nominal vs. real (descontada a inflação)</div></div>
       <div class="chart-svg-wrap"><canvas id="performance"></canvas></div>
     </div>
