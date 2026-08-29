@@ -1,0 +1,51 @@
+name: Dashboard de Performance
+
+on:
+  schedule:
+    # 1x/dia, perto das 18h BRT — não precisa da frequência das monitorias
+    # de aporte/desvio, e o histórico de preços é uma chamada mais pesada
+    # por ticker. Minuto 58 (não :00) pelo mesmo motivo dos outros
+    # workflows (evitar os minutos "redondos" de maior carga no `schedule`
+    # do GitHub); se atrasar ou não disparar num dia, pega o dia seguinte
+    # — baixa criticidade, sem cron externo de apoio.
+    - cron: "58 21 * * 1-5"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: monitor-dashboard
+  cancel-in-progress: false
+
+jobs:
+  dashboard:
+    runs-on: ubuntu-latest
+    env:
+      BRAPI_TOKEN: ${{ secrets.BRAPI_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Instalar dependências
+        run: pip install -r requirements.txt
+
+      - name: Gerar dashboard de performance
+        env:
+          PYTHONPATH: src
+        run: python scripts/build_dashboard.py
+
+      - name: Publicar dashboard (docs/index.html + wealth_history.csv) se mudou
+        run: |
+          # git status --porcelain (não git diff) porque wealth_history.csv
+          # pode ser um arquivo novo/não rastreado da primeira vez.
+          if [ -n "$(git status --porcelain -- docs/index.html config/wealth_history.csv)" ]; then
+            git config user.name "monitor-carteira-bot"
+            git config user.email "actions@users.noreply.github.com"
+            git add docs/index.html config/wealth_history.csv
+            git commit -m "chore: atualiza dashboard de performance"
+            git push
+          fi
