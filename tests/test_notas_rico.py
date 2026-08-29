@@ -64,6 +64,29 @@ Data pregão
     ]
 
 
+def test_parse_nota_text_layout_com_rotulos_empilhados_e_valores_em_tabela():
+    # Layout real observado numa nota (25/08/2026): "Nr. nota", "Folha" e
+    # "Data pregão" empilhados como rótulos, com os três valores juntos na
+    # linha seguinte (nº da nota e folha ANTES da data) — diferente do
+    # layout rótulo/valor alternado do outro teste. Isso quebrava
+    # _DATA_PREGAO_RE (`\D*` não pula os dígitos do nº da nota/folha),
+    # fazendo parse_nota_text devolver [] mesmo com as linhas de operação
+    # perfeitamente reconhecíveis.
+    texto = """NOTA DE NEGOCIAÇÃO
+Nr. nota Folha Data pregão
+142937936 1 25/08/2026
+Negociações
+Negócios realizados
+QNegociação C/V Tipo mercado Prazo Especificação do título Obs. (*) Quantidade Preço / Ajuste Valor Operação / Ajuste D/C
+1-BOVESPA C VISTA INVESTOVWRA CI @ 15 114,76 1.721,40 D
+Líquido para 27/08/2026 3.109,89 D
+"""
+    operacoes = parse_nota_text(texto)
+    assert operacoes == [
+        {"ticker": "VWRA11", "action": "compra", "qty": 15, "price": 114.76, "date": "2026-08-25"},
+    ]
+
+
 def test_parse_nota_text_mapeia_venda():
     texto = """1-BOVESPA V VISTA INVESTOVWRA CI @ 3 120,00 360,00 D
 Data pregão
