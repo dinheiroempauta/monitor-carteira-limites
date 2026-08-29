@@ -64,9 +64,9 @@ _TEMPLATE = r"""<!doctype html>
   body {{ display: flex; flex-direction: column; min-height: 0; overflow: hidden; }}
   main {{
     max-width: var(--maxw); width: 100%; margin: 0 auto; box-sizing: border-box;
-    padding: 22px 28px 22px; flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0;
+    padding: 40px 28px 40px; flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0;
   }}
-  .page-subheading {{ margin: 0 0 10px; font-size: 13.5px; }}
+  .page-subheading {{ margin: 0 0 18px; font-size: 13.5px; }}
 
   /* Layout: coluna esquerda = "Alvo, banda e posição atual" (70% da
      altura) com os 4 KPIs em grade 2x2 logo abaixo (30%) — os dois
