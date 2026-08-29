@@ -158,7 +158,9 @@ def main() -> int:
 
         for op in operacoes:
             new_lines.append(transaction_csv_line(op))
-            resumo.append(f"{op['date']} {op['ticker']} {op['action']} {op['qty']}x @ R$ {op['price']:.2f}")
+            ano, mes, dia = op["date"].split("-")
+            preco_fmt = f"{op['price']:.2f}".replace(".", ",")
+            resumo.append(f"▪️ {dia}/{mes} - {op['ticker']} = {op['qty']} x R$ {preco_fmt}")
         newly_processed.append(message_id)
 
     problemas_novos = [(mid, desc) for mid, desc in problemas if mid not in alerted]
