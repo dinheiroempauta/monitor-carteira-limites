@@ -120,5 +120,39 @@ def parse_nota_pdf(pdf_bytes: bytes, password: str) -> list[dict]:
     return operacoes
 
 
+def linhas_nao_reconhecidas_do_texto(page_text: str) -> list[str]:
+    """Diagnóstico para quando uma página não rendeu nenhuma operação
+    reconhecida: devolve as linhas que parecem ser uma operação (contêm
+    "BOVESPA", o prefixo de toda linha de operação nas notas da Rico) mas
+    não bateram com `_OPERACAO_RE` — ajuda a identificar rapidamente uma
+    mudança de layout na nota sem precisar despejar o texto inteiro do
+    PDF (que pode conter linhas irrelevantes) em log."""
+    linhas = []
+    for line in page_text.splitlines():
+        if "BOVESPA" not in line:
+            continue
+        try:
+            reconhecida = _parse_operacao_line(line) is not None
+        except ProdutoNaoMapeado:
+            reconhecida = True  # regex bateu, só o produto que não está mapeado
+        if not reconhecida:
+            linhas.append(line.strip())
+    return linhas
+
+
+def linhas_nao_reconhecidas(pdf_bytes: bytes, password: str) -> list[str]:
+    """Mesma coisa que `linhas_nao_reconhecidas_do_texto`, mas a partir do
+    PDF da nota (decripta e extrai o texto de todas as páginas)."""
+    import pdfplumber
+
+    decrypted = decrypt_pdf(pdf_bytes, password)
+    linhas = []
+    with pdfplumber.open(io.BytesIO(decrypted)) as doc:
+        for page in doc.pages:
+            text = page.extract_text() or ""
+            linhas.extend(linhas_nao_reconhecidas_do_texto(text))
+    return linhas
+
+
 def transaction_csv_line(op: dict) -> str:
     return f"{op['date']},{op['ticker']},{op['action']},{op['qty']},{op['price']:.2f}"

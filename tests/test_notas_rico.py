@@ -14,6 +14,7 @@ from monitor.notas_rico import (
     decode_raw_email,
     decrypt_pdf,
     extract_pdf_attachment,
+    linhas_nao_reconhecidas_do_texto,
     parse_nota_text,
     transaction_csv_line,
 )
@@ -100,6 +101,29 @@ def test_decrypt_pdf_remove_a_senha():
 
     with pikepdf.open(io.BytesIO(decrypted_bytes)) as reopened:
         assert len(reopened.pages) == 1
+
+
+def test_linhas_nao_reconhecidas_do_texto_ignora_linha_que_bateu():
+    texto = "1-BOVESPA C VISTA INVESTOVWRA CI @ 12 115,55 1.386,60 D"
+    assert linhas_nao_reconhecidas_do_texto(texto) == []
+
+
+def test_linhas_nao_reconhecidas_do_texto_ignora_produto_nao_mapeado():
+    # Regex bateu (é uma operação de verdade), só o produto que não está
+    # no TICKER_MAP — isso já é reportado como ProdutoNaoMapeado em outro
+    # lugar, não deve aparecer como "linha não reconhecida" (diagnóstico
+    # de mudança de layout, não de produto novo).
+    texto = "1-BOVESPA C VISTA PRODUTO NOVO XYZ CI @ 1 10,00 10,00 D"
+    assert linhas_nao_reconhecidas_do_texto(texto) == []
+
+
+def test_linhas_nao_reconhecidas_do_texto_reporta_linha_fora_do_formato_esperado():
+    texto = "Algo mudou no layout da Rico e a linha BOVESPA não bate mais com a regex"
+    assert linhas_nao_reconhecidas_do_texto(texto) == [texto]
+
+
+def test_linhas_nao_reconhecidas_do_texto_ignora_linhas_sem_bovespa():
+    assert linhas_nao_reconhecidas_do_texto("Nota de Negociação\nData pregão\n01/09/2026") == []
 
 
 def test_transaction_csv_line_formata_preco_com_duas_casas():
