@@ -68,25 +68,24 @@ _TEMPLATE = r"""<!doctype html>
   }}
   .page-subheading {{ margin: 0 0 10px; font-size: 13.5px; }}
 
-  .kpi-row {{ flex: 1 1 auto; display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }}
-  @media (max-width: 1300px) {{ .kpi-row {{ grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }} }}
-  .kpi-tile {{ border: 1px solid var(--line-strong); background: var(--paper-raised); border-radius: 3px; padding: 10px 14px; display: flex; flex-direction: column; justify-content: center; overflow: hidden; }}
+  /* Layout: coluna esquerda = "Alvo, banda e posição atual" (70% da
+     altura) com os 4 KPIs em grade 2x2 logo abaixo (30%) — os dois
+     dividem a altura da coluna, em vez do gráfico ocupar tudo ou os
+     KPIs formarem uma faixa à parte. Coluna direita = os dois gráficos
+     de linha, empilhados, cada um usando a largura inteira da coluna
+     (são os que mais se beneficiam de serem compridos na horizontal:
+     mais pontos de tempo visíveis por vez). */
+  .dash-grid {{ flex: 1 1 auto; min-height: 0; display: flex; gap: 14px; }}
+  .left-col {{ flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 14px; }}
+  .left-col .chart-card {{ flex: 7 1 0; }}
+  .kpi-row {{ flex: 3 1 0; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 10px; }}
+  .kpi-tile {{ border: 1px solid var(--line-strong); background: var(--paper-raised); border-radius: 3px; padding: 8px 14px; display: flex; flex-direction: column; justify-content: center; overflow: hidden; }}
   .kpi-tile .kpi-label {{ font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; white-space: nowrap; }}
-  .kpi-tile .kpi-value {{ font-family: var(--font-mono); font-size: 1.1rem; font-variant-numeric: tabular-nums; white-space: nowrap; }}
+  .kpi-tile .kpi-value {{ font-family: var(--font-mono); font-size: 1.2rem; font-variant-numeric: tabular-nums; white-space: nowrap; }}
   .kpi-tile .kpi-value.positive {{ color: var(--green); }}
   .kpi-tile .kpi-value.negative {{ color: var(--brick); }}
 
-  /* "Alvo, banda e posição atual" divide a mesma linha (mesma altura)
-     dos cards de KPI, em vez de ocupar uma coluna inteira e alta —
-     assim toda a largura e altura restantes ficam livres pros dois
-     gráficos de linha, que são os que mais se beneficiam de serem
-     compridos na horizontal (mais pontos de tempo visíveis por vez). */
-  .top-row {{ flex: 0 0 auto; height: 210px; display: flex; align-items: stretch; gap: 14px; margin-bottom: 14px; }}
-  .top-row .kpi-row {{ flex: 1 1 auto; }}
-  .top-row .chart-card {{ flex: 0 0 400px; }}
-  @media (max-width: 1300px) {{ .top-row .chart-card {{ flex-basis: 320px; }} }}
-
-  .line-charts {{ flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 14px; }}
+  .line-charts {{ flex: 1.6 1 0; min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 14px; }}
   .line-charts .chart-card {{ flex: 1 1 0; }}
 
   .chart-card {{ margin: 0; min-height: 0; display: flex; flex-direction: column; padding: 12px 16px 10px; }}
@@ -95,12 +94,13 @@ _TEMPLATE = r"""<!doctype html>
   @media (max-width: 900px) {{
     html, body {{ height: auto; overflow: visible; }}
     main {{ display: block; padding: 24px; }}
-    .top-row {{ display: block; height: auto; }}
-    .top-row .kpi-row {{ margin-bottom: 14px; }}
-    .top-row .chart-card {{ flex-basis: auto; }}
+    .dash-grid {{ display: block; }}
+    .left-col {{ display: block; margin-bottom: 14px; }}
+    .left-col .chart-card {{ margin-bottom: 14px; }}
+    .kpi-row {{ grid-template-rows: none; }}
     .line-charts {{ display: block; }}
     .chart-card {{ margin: 0 0 14px; }}
-    .top-row .chart-card .chart-svg-wrap, .line-charts .chart-card .chart-svg-wrap {{ height: 320px; flex: none; }}
+    .chart-card .chart-svg-wrap {{ height: 320px; flex: none; }}
   }}
   .chart-svg-wrap {{ position: relative; flex: 1 1 auto; min-height: 0; }}
   .chart-svg-wrap canvas {{ max-width: 100%; }}
@@ -140,22 +140,24 @@ _TEMPLATE = r"""<!doctype html>
 <main>
   <p class="page-subheading">Atualizado em {generated_at} — patrimônio e performance acumulam a partir do dia em que o dashboard começou a rodar, sem reconstruir o passado.</p>
 
-  <div class="top-row">
-    {kpi_section}
-    <div class="chart-card">
-      <div class="chart-head"><div class="chart-title">Alvo, banda e posição atual</div></div>
-      <div class="chart-svg-wrap"><canvas id="composicao"></canvas></div>
+  <div class="dash-grid">
+    <div class="left-col">
+      <div class="chart-card">
+        <div class="chart-head"><div class="chart-title">Alvo, banda e posição atual</div></div>
+        <div class="chart-svg-wrap"><canvas id="composicao"></canvas></div>
+      </div>
+      {kpi_section}
     </div>
-  </div>
 
-  <div class="line-charts">
-    <div class="chart-card">
-      <div class="chart-head"><div class="chart-title">Patrimônio ao longo do tempo</div></div>
-      <div class="chart-svg-wrap"><canvas id="patrimonio"></canvas></div>
-    </div>
-    <div class="chart-card">
-      <div class="chart-head"><div class="chart-title">Performance nominal vs. real (descontada a inflação)</div></div>
-      <div class="chart-svg-wrap"><canvas id="performance"></canvas></div>
+    <div class="line-charts">
+      <div class="chart-card">
+        <div class="chart-head"><div class="chart-title">Patrimônio ao longo do tempo</div></div>
+        <div class="chart-svg-wrap"><canvas id="patrimonio"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-head"><div class="chart-title">Performance nominal vs. real (descontada a inflação)</div></div>
+        <div class="chart-svg-wrap"><canvas id="performance"></canvas></div>
+      </div>
     </div>
   </div>
 
@@ -559,7 +561,6 @@ def build_dashboard_html(
         ],
     }
     ultimo = wealth_history[-1] if wealth_history else None
-    fora_da_banda = sum(1 for s in statuses if s.status != "ok")
 
     def _fmt_brl(v: float) -> str:
         return f"R$ {v:,.2f}".replace(",", "_").replace(".", ",").replace("_", ".")
@@ -589,11 +590,6 @@ def build_dashboard_html(
                 ("positive" if real >= 0 else "negative") if real is not None else "",
             ),
         ]
-    kpi_tiles.append((
-        "Ativos fora da banda",
-        f"{fora_da_banda} de {len(statuses)}" if statuses else "—",
-        "negative" if fora_da_banda else "positive",
-    ))
     kpi_section = '<div class="kpi-row">\n' + "\n".join(
         f'    <div class="kpi-tile"><div class="kpi-label">{label}</div>'
         f'<div class="kpi-value {cls}">{value}</div></div>'
