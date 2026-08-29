@@ -1,11 +1,15 @@
-"""Detecta se o disparo `schedule` do GitHub Actions parou de rodar.
+"""Detecta se os gatilhos da rotina (cron-job.org + fallback `schedule` do
+GitHub) pararam de disparar.
 
-Não temos como forçar o GitHub a executar um workflow que ele mesmo não
-disparou (limitação conhecida e documentada: eventos `schedule` podem
-atrasar ou ser descartados silenciosamente em picos de carga — ver
+A cadência normal (15min) vem de um cron externo (cron-job.org) chamando
+`workflow_dispatch` — não depende do agendador do GitHub. O `schedule`
+nativo do GitHub Actions é só o backup esparso (1x/hora): não é garantido,
+pode atrasar ou ser descartado silenciosamente em picos de carga (ver
 .github/workflows/monitor.yml). O que dá pra fazer é notar, na primeira
-execução que *conseguir* rodar, que faz tempo demais desde a última — e
-avisar no Telegram em vez de deixar passar batido.
+execução que *conseguir* rodar (de qualquer uma das duas origens), que faz
+tempo demais desde a última — e avisar no Telegram em vez de deixar passar
+batido (ex.: se o cron-job.org parar de funcionar e o fallback horário
+também atrasar).
 
 Guarda o timestamp da última execução em config/last_run_at.txt. Só
 alerta se: (a) já existe um timestamp anterior, (b) o gap desde ele é
@@ -24,9 +28,10 @@ from monitor.telegram import TelegramSendError, send_message
 REPO_ROOT = Path(__file__).resolve().parents[1]
 LAST_RUN_PATH = REPO_ROOT / "config" / "last_run_at.txt"
 
-# O monitor de bandas dispara a cada 15min das 13h-21h UTC (dias úteis) —
-# ver monitor.yml. Um gap maior que isso durante essa janela indica que
-# um ou mais disparos foram perdidos.
+# O monitor de bandas dispara a cada 15min das 13h-21h UTC (dias úteis)
+# via cron-job.org — ver monitor.yml. Um gap maior que isso durante essa
+# janela indica que o cron externo (e possivelmente o fallback horário
+# do GitHub também) deixaram de disparar.
 GAP_LIMIT_MINUTOS = 40
 HORA_INICIO_UTC = 13
 HORA_FIM_UTC = 21
