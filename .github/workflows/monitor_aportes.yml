@@ -12,6 +12,10 @@ on:
 
 permissions:
   contents: write
+  # actions: write é usado só para acionar o workflow_dispatch da
+  # Monitoria de Desvio quando ela estiver atrasada (ver
+  # scripts/acionar_fluxo_irmao_se_atrasado.py) — nenhum outro uso.
+  actions: write
 
 # Evita duas execuções concorrentes disputando o mesmo `git push` de
 # config/transactions.csv etc. — ver monitor_desvio.yml para mais contexto.
@@ -32,6 +36,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+
+      - name: Acionar monitoria de desvio se estiver atrasada
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python scripts/acionar_fluxo_irmao_se_atrasado.py desvio monitor_desvio.yml
 
       - name: Decidir se este disparo do fallback é redundante
         id: decidir
