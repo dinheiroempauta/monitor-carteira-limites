@@ -25,6 +25,10 @@ on:
 
 permissions:
   contents: write
+  # actions: write é usado só para acionar o workflow_dispatch da
+  # Monitoria de Aportes quando ela estiver atrasada (ver
+  # scripts/acionar_fluxo_irmao_se_atrasado.py) — nenhum outro uso.
+  actions: write
 
 # Depois de um incidente/degradação no GitHub Actions, vários disparos
 # atrasados podem sair juntos quando o serviço normaliza — sem isso, duas
@@ -49,6 +53,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+
+      - name: Acionar monitoria de aportes se estiver atrasada
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python scripts/acionar_fluxo_irmao_se_atrasado.py aportes monitor_aportes.yml
 
       - name: Decidir se este disparo do fallback é redundante
         id: decidir
