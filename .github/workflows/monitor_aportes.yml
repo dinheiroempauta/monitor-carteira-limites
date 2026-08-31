@@ -6,16 +6,15 @@ on:
     # maior carga) do `schedule` nativo do GitHub, que não é garantido
     # (ver monitor_desvio.yml). A cadência normal (15min) é
     # responsabilidade de um cron externo (cron-job.org) chamando
-    # `workflow_dispatch`. Janela 9-21 UTC = 6h-18h BRT.
-    - cron: "14 9-21 * * 1-5"
+    # `workflow_dispatch` com `*/15 4-9 * * 1-5` (BRT) = 7h-12h UTC — a
+    # janela da Monitoria de Aportes é antes da abertura do pregão, para
+    # importar notas de corretagem por e-mail. Este fallback cobre a
+    # MESMA janela (não a janela de mercado da Monitoria de Desvio).
+    - cron: "14 7-12 * * 1-5"
   workflow_dispatch: {}
 
 permissions:
   contents: write
-  # actions: write é usado só para acionar o workflow_dispatch da
-  # Monitoria de Desvio quando ela estiver atrasada (ver
-  # scripts/acionar_fluxo_irmao_se_atrasado.py) — nenhum outro uso.
-  actions: write
 
 # Evita duas execuções concorrentes disputando o mesmo `git push` de
 # config/transactions.csv etc. — ver monitor_desvio.yml para mais contexto.
@@ -36,11 +35,6 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-
-      - name: Acionar monitoria de desvio se estiver atrasada
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: python scripts/acionar_fluxo_irmao_se_atrasado.py desvio monitor_desvio.yml
 
       - name: Decidir se este disparo do fallback é redundante
         id: decidir
