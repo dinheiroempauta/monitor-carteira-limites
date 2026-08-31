@@ -33,16 +33,25 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Decidir se este disparo do fallback é redundante
+        id: decidir
+        env:
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+        run: python scripts/decidir_execucao_redundante.py aportes
+
       - name: Instalar dependências
+        if: steps.decidir.outputs.pular != 'true'
         run: pip install -r requirements.txt
 
       - name: Checar se o agendamento ficou tempo demais sem disparar
+        if: steps.decidir.outputs.pular != 'true'
         env:
           PYTHONPATH: src
         run: python scripts/checar_heartbeat.py aportes
 
       - name: Importar notas de negociação por e-mail (se configurado)
         id: importar_notas
+        if: steps.decidir.outputs.pular != 'true'
         env:
           PYTHONPATH: src
           GMAIL_CLIENT_ID: ${{ secrets.GMAIL_CLIENT_ID }}
@@ -53,7 +62,7 @@ jobs:
         run: python scripts/import_notas_email.py
 
       - name: Alertar no Telegram se a importação de notas falhou
-        if: steps.importar_notas.outcome == 'failure'
+        if: steps.decidir.outputs.pular != 'true' && steps.importar_notas.outcome == 'failure'
         env:
           PYTHONPATH: src
         run: |
@@ -70,13 +79,14 @@ jobs:
           "
 
       - name: Notificar posição após nota(s) importada(s)
-        if: steps.importar_notas.outputs.notas_importadas != ''
+        if: steps.decidir.outputs.pular != 'true' && steps.importar_notas.outputs.notas_importadas != ''
         env:
           PYTHONPATH: src
           NOTAS_IMPORTADAS_RESUMO: ${{ steps.importar_notas.outputs.notas_importadas }}
         run: python scripts/notificar_posicao_apos_nota.py
 
       - name: Salvar transações importadas (se houver)
+        if: steps.decidir.outputs.pular != 'true'
         run: |
           if [ -n "$(git status --porcelain -- config/transactions.csv config/processed_notas.txt config/notas_com_problema.txt)" ]; then
             git config user.name "monitor-carteira-bot"
@@ -87,6 +97,7 @@ jobs:
           fi
 
       - name: Salvar timestamp da última execução (heartbeat)
+        if: steps.decidir.outputs.pular != 'true'
         run: |
           if [ -n "$(git status --porcelain -- config/last_run_aportes_at.txt)" ]; then
             git config user.name "monitor-carteira-bot"
