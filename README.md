@@ -5,9 +5,32 @@ ativo estourou o teto da banda de tolerância e sugere vender só o
 excedente até o teto (nunca até o alvo — minimiza a quantidade vendida e
 o custo/IR). O monitor nunca sugere compra: rebalancear via aporte é
 decidido à parte, sob demanda, via a skill/workflow de aporte (veja
-`.claude/skills/aporte-rebalanceamento/`). Roda de graça, a cada 30min no
+`.claude/skills/aporte-rebalanceamento/`). Roda de graça, a cada 15min no
 horário de pregão, via GitHub Actions — mas só manda mensagem quando o
 status de algum ativo muda, não a cada execução.
+
+### Como o agendamento funciona
+
+São três workflows independentes em `.github/workflows/`, cada um com seu
+próprio gatilho primário e fallback:
+
+| Workflow | Gatilho primário (cron-job.org) | Fallback nativo do GitHub |
+|---|---|---|
+| `monitor_aportes.yml` | `*/15 4-9 * * 1-5` (BRT) — antes da abertura do pregão, importa notas de corretagem por e-mail | 1x/hora, mesma janela |
+| `monitor_desvio.yml` | `*/15 10-18 * * 1-5` (BRT) — durante o pregão, monitora desvio de banda | 1x/hora, mesma janela |
+| `dashboard.yml` | `0 19 * * *` (BRT) — 1x/dia, gera e publica o dashboard | 1x/dia, perto do mesmo horário |
+
+O gatilho primário é um cron externo ([cron-job.org](https://cron-job.org))
+chamando `workflow_dispatch` — o `schedule` nativo do GitHub Actions **não
+é garantido** (pode atrasar ou ser descartado silenciosamente em picos de
+carga), então ele fica só como backup esparso, disparando na mesma janela
+de horário do cron externo correspondente. Cada workflow decide sozinho
+(`scripts/decidir_execucao_redundante.py`) se um disparo do `schedule` é
+redundante — ou seja, se o cron externo já rodou há pouco — e pula o
+trabalho nesse caso, para não rodar (e fazer `git push`) duas vezes.
+`monitor_aportes.yml` e `monitor_desvio.yml` também têm um heartbeat
+(`scripts/checar_heartbeat.py`) que avisa no Telegram se a cadência de
+15min parar de fato, dentro da janela de cada um.
 
 Documentação completa da spec/plano/tasks em
 [`specs/001-monitor-carteira/`](specs/001-monitor-carteira/).
@@ -25,10 +48,10 @@ Documentação completa da spec/plano/tasks em
    login de lá tem captcha — não dá para automatizar sem você presente,
    então optamos pelo registro manual de transações, que é simples e
    não depende de nada quebrar.
-3. A cada 30min (10h-18h, dias úteis), o workflow busca a cotação de cada
-   ativo na API brapi.dev, calcula o % atual de cada um e compara com a
-   banda. Isso usa ~1.680 requisições/mês, bem dentro do limite gratuito
-   de 15 mil da brapi.dev.
+3. A cada 15min (10h-18h BRT, dias úteis — horário de pregão), o
+   `monitor_desvio.yml` busca a cotação de cada ativo na API brapi.dev,
+   calcula o % atual de cada um e compara com a banda. Isso fica bem
+   dentro do limite gratuito de 15 mil requisições/mês da brapi.dev.
 4. `config/last_status.yaml` guarda o status (dentro/fora da banda) de
    cada ativo na última vez que um alerta foi enviado. Só manda mensagem
    no Telegram quando esse status muda para algum ativo (com uma margem
@@ -110,7 +133,7 @@ automaticamente a partir dele.
 
 ## Dashboard de performance
 
-Publicado de graça no GitHub Pages, atualizado 1x/dia (18h BRT). Mostra:
+Publicado de graça no GitHub Pages, atualizado 1x/dia (~19h BRT). Mostra:
 
 1. **Composição %** da carteira atual.
 2. **Patrimônio** ao longo do tempo.
