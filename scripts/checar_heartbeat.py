@@ -32,12 +32,18 @@ from monitor.telegram import TelegramSendError, send_message
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
-# O monitor dispara a cada 15min das 6h-18h BRT (9h-21h UTC), dias úteis,
+# O monitor dispara a cada 15min das 7h-18h BRT (10h-21h UTC), dias úteis,
 # via cron-job.org. Um gap maior que isso durante essa janela indica que
 # o cron externo (e possivelmente o fallback horário do GitHub também)
 # deixaram de disparar.
+#
+# O início real do cron-job.org é ~10h UTC (7h BRT) — antes disso só o
+# fallback horário do GitHub roda, e cada disparo dele calcularia um gap
+# de ~60min (> GAP_LIMIT_MINUTOS) contra a execução do dia anterior,
+# gerando alerta falso logo cedo. Por isso a janela começa em 10h UTC, e
+# não em 9h UTC.
 GAP_LIMIT_MINUTOS = 40
-HORA_INICIO_UTC = 9
+HORA_INICIO_UTC = 10
 HORA_FIM_UTC = 21
 
 
