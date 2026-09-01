@@ -69,8 +69,17 @@ def compute_monthly_returns(
         nominal_do_mês = ganho_do_mês / capital_em_risco
 
     `patrimônio_início` e o "total investido" de início de mês vêm do
-    fechamento do mês anterior; no primeiro mês da série (sem mês
-    anterior), ambos são 0 — não existia carteira antes disso.
+    fechamento do mês anterior.
+
+    O PRIMEIRO mês calendário da série NUNCA aparece no resultado: ele não
+    tem um "fechamento do mês anterior" de verdade pra comparar (só há uma
+    aproximação de patrimônio/investido = 0, como se a carteira tivesse
+    nascido exatamente no dia 1 daquele mês — o que raramente é o caso: o
+    usuário normalmente já vinha investindo dias/semanas antes do dashboard
+    começar a coletar dados). Ele só serve de baseline silenciosa para
+    calcular o retorno do mês seguinte, que aí sim compara fechamento
+    contra fechamento (dado real, não aproximado). Com só 1 mês de dados,
+    o resultado fica vazio.
 
     O retorno real de cada mês desconta só o IPCA DAQUELE mês (não
     acumulado com outros meses) — `ipca_by_month` mapeia (ano, mês) para a
@@ -87,23 +96,25 @@ def compute_monthly_returns(
     results = []
     prev_wealth = 0.0
     prev_invested = 0.0
-    for key in sorted(by_month):
+    for i, key in enumerate(sorted(by_month)):
         rows = sorted(by_month[key], key=lambda r: r[0])
         _, wealth_end, invested_end = rows[-1]
 
-        aporte_liquido = invested_end - prev_invested
-        capital_em_risco = prev_wealth + aporte_liquido
-        if abs(capital_em_risco) < 1e-9:
-            nominal = None
-        else:
-            nominal = (wealth_end - prev_wealth - aporte_liquido) / capital_em_risco
+        if i > 0:  # primeiro mês nunca entra no resultado — só define a base do 2º
+            aporte_liquido = invested_end - prev_invested
+            capital_em_risco = prev_wealth + aporte_liquido
+            if abs(capital_em_risco) < 1e-9:
+                nominal = None
+            else:
+                nominal = (wealth_end - prev_wealth - aporte_liquido) / capital_em_risco
 
-        ipca_mes = ipca_by_month.get(key)
-        real = None
-        if nominal is not None and ipca_mes is not None:
-            real = (1 + nominal) / (1 + ipca_mes / 100) - 1
+            ipca_mes = ipca_by_month.get(key)
+            real = None
+            if nominal is not None and ipca_mes is not None:
+                real = (1 + nominal) / (1 + ipca_mes / 100) - 1
 
-        results.append(MonthlyReturn(year=key[0], month=key[1], nominal=nominal, real=real))
+            results.append(MonthlyReturn(year=key[0], month=key[1], nominal=nominal, real=real))
+
         prev_wealth, prev_invested = wealth_end, invested_end
 
     return results
