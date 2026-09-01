@@ -104,13 +104,13 @@
 </div>
 
 <main>
-  <p class="page-subheading">Atualizado em 2026-09-01 00:44 UTC — patrimônio e performance acumulam a partir do dia em que o dashboard começou a rodar, sem reconstruir o passado.</p>
+  <p class="page-subheading">Atualizado em 2026-09-01 09:58 UTC — patrimônio e performance acumulam desde a primeira transação da carteira.</p>
 
   <div class="dash-grid">
     <div class="left-col">
       <div class="kpi-row">
-    <div class="kpi-tile"><div class="kpi-label">Patrimônio atual</div><div class="kpi-value ">R$ 23.089,16</div></div>
-    <div class="kpi-tile"><div class="kpi-label">Total investido</div><div class="kpi-value ">R$ 22.872,07</div></div>
+    <div class="kpi-tile"><div class="kpi-label">Patrimônio atual</div><div class="kpi-value ">R$ 23.300,28</div></div>
+    <div class="kpi-tile"><div class="kpi-label">Total investido</div><div class="kpi-value ">R$ 23.082,39</div></div>
   </div>
       <div class="chart-card">
         <div class="chart-head"><div class="chart-title">Alvo, banda e posição atual</div></div>
@@ -135,7 +135,7 @@
 
 <script src="assets/site.js"></script>
 <script>
-const dados = {"composicao": [{"ticker": "B5P211", "pct": 38.38, "alvo": 40.0, "min": 30.0, "max": 50.0, "status": "ok"}, {"ticker": "VWRA11", "pct": 30.44, "alvo": 30.0, "min": 15.0, "max": 45.0, "status": "ok"}, {"ticker": "DIVO11", "pct": 20.93, "alvo": 20.0, "min": 5.0, "max": 35.0, "status": "ok"}, {"ticker": "CDIB11", "pct": 5.37, "alvo": 5.0, "min": 0.0, "max": 15.0, "status": "ok"}, {"ticker": "GOLD11", "pct": 4.88, "alvo": 5.0, "min": 0.0, "max": 15.0, "status": "ok"}], "patrimonio": [{"data": "2026-08-24", "valor": 18128.45}, {"data": "2026-08-25", "valor": 18200.42}, {"data": "2026-08-26", "valor": 18200.42}, {"data": "2026-08-28", "valor": 18263.45}, {"data": "2026-08-29", "valor": 23053.01}, {"data": "2026-08-30", "valor": 23053.01}, {"data": "2026-08-31", "valor": 23089.16}, {"data": "2026-09-01", "valor": 23089.16}], "performance": [{"mes": "set/2026", "nominal": 0.0, "real": null}]};
+const dados = {"composicao": [{"ticker": "B5P211", "pct": 38.03, "alvo": 40.0, "min": 30.0, "max": 50.0, "status": "ok"}, {"ticker": "VWRA11", "pct": 30.65, "alvo": 30.0, "min": 15.0, "max": 45.0, "status": "ok"}, {"ticker": "DIVO11", "pct": 20.74, "alvo": 20.0, "min": 5.0, "max": 35.0, "status": "ok"}, {"ticker": "CDIB11", "pct": 5.32, "alvo": 5.0, "min": 0.0, "max": 15.0, "status": "ok"}, {"ticker": "GOLD11", "pct": 5.25, "alvo": 5.0, "min": 0.0, "max": 15.0, "status": "ok"}], "patrimonio": [{"data": "2026-08-05", "valor": 4871.51}, {"data": "2026-08-06", "valor": 4871.26}, {"data": "2026-08-07", "valor": 4814.11}, {"data": "2026-08-08", "valor": 4814.11}, {"data": "2026-08-09", "valor": 4814.11}, {"data": "2026-08-10", "valor": 5995.09}, {"data": "2026-08-11", "valor": 5975.93}, {"data": "2026-08-12", "valor": 5996.6}, {"data": "2026-08-13", "valor": 7097.15}, {"data": "2026-08-14", "valor": 7115.44}, {"data": "2026-08-15", "valor": 7115.44}, {"data": "2026-08-16", "valor": 7115.44}, {"data": "2026-08-17", "valor": 7089.5}, {"data": "2026-08-18", "valor": 9617.57}, {"data": "2026-08-19", "valor": 9669.25}, {"data": "2026-08-20", "valor": 9628.4}, {"data": "2026-08-21", "valor": 9696.19}, {"data": "2026-08-22", "valor": 9696.19}, {"data": "2026-08-23", "valor": 9696.19}, {"data": "2026-08-24", "valor": 18128.45}, {"data": "2026-08-25", "valor": 18200.42}, {"data": "2026-08-26", "valor": 18200.42}, {"data": "2026-08-28", "valor": 18263.45}, {"data": "2026-08-29", "valor": 23053.01}, {"data": "2026-08-30", "valor": 23053.01}, {"data": "2026-08-31", "valor": 23089.16}, {"data": "2026-09-01", "valor": 23300.28}], "performance": [{"mes": "set/2026", "nominal": 0.0, "real": null}]};
 
 function fmtPct(v) {
   if (v === null || v === undefined || Number.isNaN(v)) return '—';
