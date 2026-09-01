@@ -156,11 +156,11 @@ _TEMPLATE = r"""<!doctype html>
 
   <div class="dash-grid">
     <div class="left-col">
+      {kpi_section}
       <div class="chart-card">
         <div class="chart-head"><div class="chart-title">Alvo, banda e posição atual</div></div>
         <div class="chart-svg-wrap"><canvas id="composicao"></canvas></div>
       </div>
-      {kpi_section}
     </div>
 
     <div class="line-charts">
