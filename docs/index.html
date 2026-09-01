@@ -45,8 +45,8 @@
      mais pontos de tempo visíveis por vez). */
   .dash-grid { flex: 1 1 auto; min-height: 0; display: flex; gap: 14px; }
   .left-col { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 14px; }
-  .left-col .chart-card { flex: 7 1 0; }
-  .kpi-row { flex: 3 1 0; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 10px; }
+  .left-col .chart-card { flex: 1 1 auto; }
+  .kpi-row { flex: 0 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .kpi-tile { border: 1px solid var(--line-strong); background: var(--paper-raised); border-radius: 3px; padding: 8px 14px; display: flex; flex-direction: column; justify-content: center; overflow: hidden; }
   .kpi-tile .kpi-label { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; white-space: nowrap; }
   .kpi-tile .kpi-value { font-family: var(--font-mono); font-size: 1.2rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -65,7 +65,6 @@
     .dash-grid { display: block; }
     .left-col { display: block; margin-bottom: 14px; }
     .left-col .chart-card { margin-bottom: 14px; }
-    .kpi-row { grid-template-rows: none; }
     .line-charts { display: block; }
     .chart-card { margin: 0 0 14px; }
     .chart-card .chart-svg-wrap { height: 320px; flex: none; }
@@ -105,7 +104,7 @@
 </div>
 
 <main>
-  <p class="page-subheading">Atualizado em 2026-09-01 00:36 UTC — patrimônio e performance acumulam a partir do dia em que o dashboard começou a rodar, sem reconstruir o passado.</p>
+  <p class="page-subheading">Atualizado em 2026-09-01 00:41 UTC — patrimônio e performance acumulam a partir do dia em que o dashboard começou a rodar, sem reconstruir o passado.</p>
 
   <div class="dash-grid">
     <div class="left-col">
@@ -116,8 +115,6 @@
       <div class="kpi-row">
     <div class="kpi-tile"><div class="kpi-label">Patrimônio atual</div><div class="kpi-value ">R$ 23.089,16</div></div>
     <div class="kpi-tile"><div class="kpi-label">Total investido</div><div class="kpi-value ">R$ 22.872,07</div></div>
-    <div class="kpi-tile"><div class="kpi-label">Retorno nominal</div><div class="kpi-value positive">+0,9%</div></div>
-    <div class="kpi-tile"><div class="kpi-label">Retorno real (IPCA)</div><div class="kpi-value ">—</div></div>
   </div>
     </div>
 
