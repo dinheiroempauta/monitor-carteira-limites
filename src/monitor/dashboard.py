@@ -93,8 +93,8 @@ _TEMPLATE = r"""<!doctype html>
      mais pontos de tempo visíveis por vez). */
   .dash-grid {{ flex: 1 1 auto; min-height: 0; display: flex; gap: 14px; }}
   .left-col {{ flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 14px; }}
-  .left-col .chart-card {{ flex: 7 1 0; }}
-  .kpi-row {{ flex: 3 1 0; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 10px; }}
+  .left-col .chart-card {{ flex: 1 1 auto; }}
+  .kpi-row {{ flex: 0 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }}
   .kpi-tile {{ border: 1px solid var(--line-strong); background: var(--paper-raised); border-radius: 3px; padding: 8px 14px; display: flex; flex-direction: column; justify-content: center; overflow: hidden; }}
   .kpi-tile .kpi-label {{ font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; white-space: nowrap; }}
   .kpi-tile .kpi-value {{ font-family: var(--font-mono); font-size: 1.2rem; font-variant-numeric: tabular-nums; white-space: nowrap; }}
@@ -113,7 +113,6 @@ _TEMPLATE = r"""<!doctype html>
     .dash-grid {{ display: block; }}
     .left-col {{ display: block; margin-bottom: 14px; }}
     .left-col .chart-card {{ margin-bottom: 14px; }}
-    .kpi-row {{ grid-template-rows: none; }}
     .line-charts {{ display: block; }}
     .chart-card {{ margin: 0 0 14px; }}
     .chart-card .chart-svg-wrap {{ height: 320px; flex: none; }}
@@ -585,30 +584,15 @@ def build_dashboard_html(
     def _fmt_brl(v: float) -> str:
         return f"R$ {v:,.2f}".replace(",", "_").replace(".", ",").replace("_", ".")
 
-    def _fmt_pct(v: float) -> str:
-        sinal = "+" if v >= 0 else ""
-        return f"{sinal}{v * 100:.1f}%".replace(".", ",")
-
     if ultimo is None:
         kpi_tiles = [
             ("Patrimônio atual", "—", ""),
             ("Total investido", "—", ""),
-            ("Retorno nominal", "—", ""),
-            ("Retorno real (IPCA)", "—", ""),
         ]
     else:
-        nominal = float(ultimo["nominal_return"])
-        real = ultimo["real_return"]
-        real = float(real) if real not in ("", None) else None
         kpi_tiles = [
             ("Patrimônio atual", _fmt_brl(float(ultimo["wealth"])), ""),
             ("Total investido", _fmt_brl(float(ultimo["invested"])), ""),
-            ("Retorno nominal", _fmt_pct(nominal), "positive" if nominal >= 0 else "negative"),
-            (
-                "Retorno real (IPCA)",
-                _fmt_pct(real) if real is not None else "—",
-                ("positive" if real >= 0 else "negative") if real is not None else "",
-            ),
         ]
     kpi_section = '<div class="kpi-row">\n' + "\n".join(
         f'    <div class="kpi-tile"><div class="kpi-label">{label}</div>'
