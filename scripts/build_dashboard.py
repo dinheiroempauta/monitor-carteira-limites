@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import os
 import sys
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -22,7 +22,7 @@ from monitor.allocation import compute_statuses  # noqa: E402
 from monitor.config import append_wealth_history, load_portfolio, load_wealth_history  # noqa: E402
 from monitor.dashboard import build_dashboard_html  # noqa: E402
 from monitor.ipca import IpcaFetchError, fetch_ipca_monthly  # noqa: E402
-from monitor.performance import compute_nominal_return, compute_real_return  # noqa: E402
+from monitor.performance import compute_monthly_returns, compute_nominal_return, compute_real_return  # noqa: E402
 from monitor.prices import PriceFetchError, fetch_prices  # noqa: E402
 from monitor.transactions import current_holdings, first_transaction_date, load_transactions, total_invested_at  # noqa: E402
 
@@ -43,6 +43,7 @@ def main() -> int:
 
     hoje = datetime.now(timezone.utc).date()
     inicio = first_transaction_date(transactions)
+    inicio_mes = date(inicio.year, inicio.month, 1)
 
     try:
         current_prices = fetch_prices(list(targets.keys()), brapi_token)
@@ -58,11 +59,21 @@ def main() -> int:
     nominal = compute_nominal_return(wealth, invested)
 
     try:
-        ipca_monthly = fetch_ipca_monthly(inicio - timedelta(days=31), hoje)
+        # Busca a partir do 1º dia do MÊS da primeira transação (não 31
+        # dias antes) — evita puxar sem querer o IPCA de um mês anterior
+        # ao início do acompanhamento, que não deveria entrar em nenhuma
+        # conta de retorno real daqui.
+        ipca_monthly = fetch_ipca_monthly(inicio_mes, hoje)
     except IpcaFetchError as exc:
         print(f"Aviso: sem dado de IPCA, performance real ficará vazia: {exc}", file=sys.stderr)
         ipca_monthly = []
-    real = compute_real_return(nominal, ipca_monthly)
+
+    # Índice acumulado (KPI do topo, "desde o início"): só meses a partir
+    # do mês da primeira transação — sempre true por construção do fetch
+    # acima, mas o filtro fica explícito aqui para não depender só do
+    # range da busca.
+    ipca_desde_inicio = [(d, v) for d, v in ipca_monthly if (d.year, d.month) >= (inicio_mes.year, inicio_mes.month)]
+    real = compute_real_return(nominal, ipca_desde_inicio)
 
     append_wealth_history(
         {
@@ -75,8 +86,15 @@ def main() -> int:
     )
 
     wealth_history = load_wealth_history()
+
+    ipca_by_month = {(d.year, d.month): v for d, v in ipca_monthly}
+    daily_points = [
+        (date.fromisoformat(r["date"]), float(r["wealth"]), float(r["invested"])) for r in wealth_history
+    ]
+    monthly_returns = compute_monthly_returns(daily_points, ipca_by_month)
+
     generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
-    html = build_dashboard_html(statuses, wealth_history, generated_at)
+    html = build_dashboard_html(statuses, wealth_history, monthly_returns, generated_at)
 
     DOCS_PATH.parent.mkdir(exist_ok=True)
     DOCS_PATH.write_text(html, encoding="utf-8")

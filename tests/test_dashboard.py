@@ -8,6 +8,7 @@ from monitor.allocation import compute_statuses
 from monitor.config import AssetTarget
 from monitor import dashboard
 from monitor.dashboard import build_dashboard_html
+from monitor.performance import MonthlyReturn
 
 TARGETS = {
     "B5P211": AssetTarget("B5P211", target=0.40, min=0.20, max=0.50),
@@ -31,8 +32,12 @@ def test_build_dashboard_html_embute_composicao_patrimonio_e_performance():
         {"date": "2026-01-01", "wealth": "1000.0", "invested": "1000.0", "nominal_return": "0.0", "real_return": ""},
         {"date": "2026-02-01", "wealth": "1100.0", "invested": "1000.0", "nominal_return": "0.10", "real_return": "0.08"},
     ]
+    monthly_returns = [
+        MonthlyReturn(year=2026, month=1, nominal=0.10, real=0.08),
+        MonthlyReturn(year=2026, month=2, nominal=0.02, real=None),
+    ]
 
-    html = build_dashboard_html(statuses, wealth_history, generated_at="2026-08-24 10:00")
+    html = build_dashboard_html(statuses, wealth_history, monthly_returns, generated_at="2026-08-24 10:00")
 
     assert "<html" in html
     assert "2026-08-24 10:00" in html
@@ -48,8 +53,10 @@ def test_build_dashboard_html_embute_composicao_patrimonio_e_performance():
         {"data": "2026-01-01", "valor": 1000.0},
         {"data": "2026-02-01", "valor": 1100.0},
     ]
-    assert dados["performance"][1] == {"data": "2026-02-01", "nominal": 10.0, "real": 8.0}
-    assert dados["performance"][0]["real"] is None
+    assert dados["performance"] == [
+        {"mes": "jan/2026", "nominal": 10.0, "real": 8.0},
+        {"mes": "fev/2026", "nominal": 2.0, "real": None},
+    ]
 
 
 def test_build_dashboard_html_nao_inclui_formulario_por_padrao():
@@ -61,7 +68,7 @@ def test_build_dashboard_html_nao_inclui_formulario_por_padrao():
     prices = {"B5P211": 100.0, "VWRA11": 100.0}
     statuses = compute_statuses(holdings, prices, TARGETS)
 
-    html = build_dashboard_html(statuses, [], generated_at="2026-08-24 10:00")
+    html = build_dashboard_html(statuses, [], [], generated_at="2026-08-24 10:00")
 
     assert 'id="tx-form"' not in html
     assert 'id="gh-token-input"' not in html
@@ -78,7 +85,7 @@ def test_build_dashboard_html_formulario_disponivel_se_reativado():
     original = dashboard.SHOW_TRANSACTION_FORM
     dashboard.SHOW_TRANSACTION_FORM = True
     try:
-        html = build_dashboard_html(statuses, [], generated_at="2026-08-24 10:00")
+        html = build_dashboard_html(statuses, [], [], generated_at="2026-08-24 10:00")
     finally:
         dashboard.SHOW_TRANSACTION_FORM = original
 

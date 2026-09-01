@@ -22,6 +22,22 @@ from __future__ import annotations
 import json
 
 from monitor.allocation import AssetStatus
+from monitor.performance import MonthlyReturn
+
+MES_ABREV = {
+    1: "jan",
+    2: "fev",
+    3: "mar",
+    4: "abr",
+    5: "mai",
+    6: "jun",
+    7: "jul",
+    8: "ago",
+    9: "set",
+    10: "out",
+    11: "nov",
+    12: "dez",
+}
 
 REPO_OWNER = "dinheiroempauta"
 REPO_NAME = "monitor-carteira-limites"
@@ -154,7 +170,7 @@ _TEMPLATE = r"""<!doctype html>
         <div class="chart-svg-wrap"><canvas id="patrimonio"></canvas></div>
       </div>
       <div class="chart-card">
-        <div class="chart-head"><div class="chart-title">Performance nominal vs. real (descontada a inflação)</div></div>
+        <div class="chart-head"><div class="chart-title">Performance mensal: nominal vs. real (descontada a inflação do mês)</div></div>
         <div class="chart-svg-wrap"><canvas id="performance"></canvas></div>
       </div>
     </div>
@@ -279,12 +295,12 @@ function montarGraficos() {{
   }}));
 
   charts.push(new Chart(document.getElementById('performance'), {{
-    type: 'line',
+    type: 'bar',
     data: {{
-      labels: dados.performance.map(p => p.data),
+      labels: dados.performance.map(p => p.mes),
       datasets: [
-        {{ label: 'Nominal', data: dados.performance.map(p => p.nominal), borderColor: cor.green, backgroundColor: cor.green, tension: 0.15, pointHoverRadius: 5 }},
-        {{ label: 'Real (descontado IPCA)', data: dados.performance.map(p => p.real), borderColor: cor.gold, backgroundColor: cor.gold, tension: 0.15, pointHoverRadius: 5 }}
+        {{ label: 'Nominal', data: dados.performance.map(p => p.nominal), backgroundColor: cor.green, borderRadius: 3 }},
+        {{ label: 'Real (descontado IPCA do mês)', data: dados.performance.map(p => p.real), backgroundColor: cor.gold, borderRadius: 3 }}
       ]
     }},
     options: {{
@@ -292,12 +308,18 @@ function montarGraficos() {{
       maintainAspectRatio: false,
       interaction: {{ mode: 'index', intersect: false }},
       scales: {{
-        x: {{ ticks: {{ color: cor.muted }}, grid: {{ color: cor.line }} }},
+        x: {{ ticks: {{ color: cor.ink }}, grid: {{ display: false }} }},
         y: {{ ticks: {{ color: cor.muted, callback: v => fmtPct(v) }}, grid: {{ color: cor.line }} }}
       }},
       plugins: {{
         legend: {{ labels: {{ color: cor.ink }} }},
-        tooltip: {{ callbacks: {{ label: c => `${{c.dataset.label}}: ${{fmtPct(c.raw)}}` }} }}
+        tooltip: {{
+          callbacks: {{
+            label: c => c.raw === null
+              ? `${{c.dataset.label}}: sem dado ainda (IPCA do mês não publicado)`
+              : `${{c.dataset.label}}: ${{fmtPct(c.raw)}}`
+          }}
+        }}
       }}
     }}
   }}));
@@ -527,11 +549,15 @@ document.getElementById('tx-form').addEventListener('submit', async (e) => {{
 def build_dashboard_html(
     statuses: list[AssetStatus],
     wealth_history: list[dict],
+    monthly_returns: list[MonthlyReturn],
     generated_at: str,
 ) -> str:
     """`wealth_history` é a série acumulada dia a dia (ver
     config.load_wealth_history) — cada linha tem date/wealth/invested/
-    nominal_return/real_return como strings (vindas do CSV)."""
+    nominal_return/real_return como strings (vindas do CSV), usada só pro
+    gráfico de patrimônio. `monthly_returns` (ver
+    performance.compute_monthly_returns) é o retorno de cada mês
+    isoladamente — usado no gráfico de barras de performance mensal."""
     dados = {
         "composicao": [
             {
@@ -547,11 +573,11 @@ def build_dashboard_html(
         "patrimonio": [{"data": r["date"], "valor": round(float(r["wealth"]), 2)} for r in wealth_history],
         "performance": [
             {
-                "data": r["date"],
-                "nominal": round(float(r["nominal_return"]) * 100, 2),
-                "real": round(float(r["real_return"]) * 100, 2) if r["real_return"] not in ("", None) else None,
+                "mes": f"{MES_ABREV[m.month]}/{m.year}",
+                "nominal": round(m.nominal * 100, 2) if m.nominal is not None else None,
+                "real": round(m.real * 100, 2) if m.real is not None else None,
             }
-            for r in wealth_history
+            for m in monthly_returns
         ],
     }
     ultimo = wealth_history[-1] if wealth_history else None
