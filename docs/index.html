@@ -105,7 +105,7 @@
 </div>
 
 <main>
-  <p class="page-subheading">Atualizado em 2026-08-31 22:00 UTC — patrimônio e performance acumulam a partir do dia em que o dashboard começou a rodar, sem reconstruir o passado.</p>
+  <p class="page-subheading">Atualizado em 2026-09-01 00:31 UTC — patrimônio e performance acumulam a partir do dia em que o dashboard começou a rodar, sem reconstruir o passado.</p>
 
   <div class="dash-grid">
     <div class="left-col">
@@ -117,7 +117,7 @@
     <div class="kpi-tile"><div class="kpi-label">Patrimônio atual</div><div class="kpi-value ">R$ 23.089,16</div></div>
     <div class="kpi-tile"><div class="kpi-label">Total investido</div><div class="kpi-value ">R$ 22.872,07</div></div>
     <div class="kpi-tile"><div class="kpi-label">Retorno nominal</div><div class="kpi-value positive">+0,9%</div></div>
-    <div class="kpi-tile"><div class="kpi-label">Retorno real (IPCA)</div><div class="kpi-value positive">+0,9%</div></div>
+    <div class="kpi-tile"><div class="kpi-label">Retorno real (IPCA)</div><div class="kpi-value ">—</div></div>
   </div>
     </div>
 
@@ -127,7 +127,7 @@
         <div class="chart-svg-wrap"><canvas id="patrimonio"></canvas></div>
       </div>
       <div class="chart-card">
-        <div class="chart-head"><div class="chart-title">Performance nominal vs. real (descontada a inflação)</div></div>
+        <div class="chart-head"><div class="chart-title">Performance mensal: nominal vs. real (descontada a inflação do mês)</div></div>
         <div class="chart-svg-wrap"><canvas id="performance"></canvas></div>
       </div>
     </div>
@@ -138,7 +138,7 @@
 
 <script src="assets/site.js"></script>
 <script>
-const dados = {"composicao": [{"ticker": "B5P211", "pct": 38.38, "alvo": 40.0, "min": 30.0, "max": 50.0, "status": "ok"}, {"ticker": "VWRA11", "pct": 30.44, "alvo": 30.0, "min": 15.0, "max": 45.0, "status": "ok"}, {"ticker": "DIVO11", "pct": 20.93, "alvo": 20.0, "min": 5.0, "max": 35.0, "status": "ok"}, {"ticker": "CDIB11", "pct": 5.37, "alvo": 5.0, "min": 0.0, "max": 15.0, "status": "ok"}, {"ticker": "GOLD11", "pct": 4.88, "alvo": 5.0, "min": 0.0, "max": 15.0, "status": "ok"}], "patrimonio": [{"data": "2026-08-24", "valor": 18128.45}, {"data": "2026-08-25", "valor": 18200.42}, {"data": "2026-08-26", "valor": 18200.42}, {"data": "2026-08-28", "valor": 18263.45}, {"data": "2026-08-29", "valor": 23053.01}, {"data": "2026-08-30", "valor": 23053.01}, {"data": "2026-08-31", "valor": 23089.16}], "performance": [{"data": "2026-08-24", "nominal": 0.02, "real": -0.05}, {"data": "2026-08-25", "nominal": 0.54, "real": 0.46}, {"data": "2026-08-26", "nominal": 0.54, "real": 0.46}, {"data": "2026-08-28", "nominal": 0.88, "real": 0.81}, {"data": "2026-08-29", "nominal": 0.79, "real": 0.72}, {"data": "2026-08-30", "nominal": 0.79, "real": 0.72}, {"data": "2026-08-31", "nominal": 0.95, "real": 0.88}]};
+const dados = {"composicao": [{"ticker": "B5P211", "pct": 38.38, "alvo": 40.0, "min": 30.0, "max": 50.0, "status": "ok"}, {"ticker": "VWRA11", "pct": 30.44, "alvo": 30.0, "min": 15.0, "max": 45.0, "status": "ok"}, {"ticker": "DIVO11", "pct": 20.93, "alvo": 20.0, "min": 5.0, "max": 35.0, "status": "ok"}, {"ticker": "CDIB11", "pct": 5.37, "alvo": 5.0, "min": 0.0, "max": 15.0, "status": "ok"}, {"ticker": "GOLD11", "pct": 4.88, "alvo": 5.0, "min": 0.0, "max": 15.0, "status": "ok"}], "patrimonio": [{"data": "2026-08-24", "valor": 18128.45}, {"data": "2026-08-25", "valor": 18200.42}, {"data": "2026-08-26", "valor": 18200.42}, {"data": "2026-08-28", "valor": 18263.45}, {"data": "2026-08-29", "valor": 23053.01}, {"data": "2026-08-30", "valor": 23053.01}, {"data": "2026-08-31", "valor": 23089.16}, {"data": "2026-09-01", "valor": 23089.16}], "performance": [{"mes": "ago/2026", "nominal": 0.95, "real": null}, {"mes": "set/2026", "nominal": 0.0, "real": null}]};
 
 function fmtPct(v) {
   if (v === null || v === undefined || Number.isNaN(v)) return '—';
@@ -252,12 +252,12 @@ function montarGraficos() {
   }));
 
   charts.push(new Chart(document.getElementById('performance'), {
-    type: 'line',
+    type: 'bar',
     data: {
-      labels: dados.performance.map(p => p.data),
+      labels: dados.performance.map(p => p.mes),
       datasets: [
-        { label: 'Nominal', data: dados.performance.map(p => p.nominal), borderColor: cor.green, backgroundColor: cor.green, tension: 0.15, pointHoverRadius: 5 },
-        { label: 'Real (descontado IPCA)', data: dados.performance.map(p => p.real), borderColor: cor.gold, backgroundColor: cor.gold, tension: 0.15, pointHoverRadius: 5 }
+        { label: 'Nominal', data: dados.performance.map(p => p.nominal), backgroundColor: cor.green, borderRadius: 3 },
+        { label: 'Real (descontado IPCA do mês)', data: dados.performance.map(p => p.real), backgroundColor: cor.gold, borderRadius: 3 }
       ]
     },
     options: {
@@ -265,12 +265,18 @@ function montarGraficos() {
       maintainAspectRatio: false,
       interaction: { mode: 'index', intersect: false },
       scales: {
-        x: { ticks: { color: cor.muted }, grid: { color: cor.line } },
+        x: { ticks: { color: cor.ink }, grid: { display: false } },
         y: { ticks: { color: cor.muted, callback: v => fmtPct(v) }, grid: { color: cor.line } }
       },
       plugins: {
         legend: { labels: { color: cor.ink } },
-        tooltip: { callbacks: { label: c => `${c.dataset.label}: ${fmtPct(c.raw)}` } }
+        tooltip: {
+          callbacks: {
+            label: c => c.raw === null
+              ? `${c.dataset.label}: sem dado ainda (IPCA do mês não publicado)`
+              : `${c.dataset.label}: ${fmtPct(c.raw)}`
+          }
+        }
       }
     }
   }));
