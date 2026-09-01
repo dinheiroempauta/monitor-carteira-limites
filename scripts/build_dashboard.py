@@ -1,8 +1,11 @@
 """Gera docs/index.html — o dashboard de performance publicado no GitHub
 Pages. Roda 1x/dia junto com o monitor de bandas.
 
-Não reconstrói o passado (sem histórico de preço): acumula um ponto por
-dia em config/wealth_history.csv a partir de quando começou a rodar.
+Acumula um ponto por dia em config/wealth_history.csv a partir de hoje. O
+histórico anterior a isso (desde a primeira transação) é preenchido uma
+vez por scripts/backfill_wealth_history.py, usando preço de fechamento
+histórico da brapi.dev — rodar esse script sempre que houver uma lacuna
+(ex.: numa carteira nova, antes do primeiro `wealth_history.csv` existir).
 
 Qualquer falha aqui não deve derrubar o monitor de bandas: o workflow roda
 este script como um step separado, e uma falha de dashboard não impede o
