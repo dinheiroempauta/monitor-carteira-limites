@@ -152,7 +152,7 @@ _TEMPLATE = r"""<!doctype html>
 </div>
 
 <main>
-  <p class="page-subheading">Atualizado em {generated_at} — patrimônio e performance acumulam a partir do dia em que o dashboard começou a rodar, sem reconstruir o passado.</p>
+  <p class="page-subheading">Atualizado em {generated_at} — patrimônio e performance acumulam desde a primeira transação da carteira.</p>
 
   <div class="dash-grid">
     <div class="left-col">

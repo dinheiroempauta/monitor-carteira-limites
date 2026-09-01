@@ -42,6 +42,13 @@ jobs:
         if: steps.decidir.outputs.pular != 'true'
         run: pip install -r requirements.txt
 
+      - name: Preencher wealth_history.csv desde a primeira transação (idempotente)
+        if: steps.decidir.outputs.pular != 'true'
+        env:
+          PYTHONPATH: src
+          BRAPI_TOKEN: ${{ secrets.BRAPI_TOKEN }}
+        run: python scripts/backfill_wealth_history.py
+
       - name: Gerar dashboard de performance
         if: steps.decidir.outputs.pular != 'true'
         env:
