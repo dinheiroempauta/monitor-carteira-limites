@@ -61,3 +61,36 @@ def test_fetch_historical_prices_propaga_erro_quando_ticker_nao_encontrado(monke
         assert False, "deveria ter levantado PriceFetchError"
     except prices.PriceFetchError:
         pass
+
+
+def test_fetch_prices_tenta_novamente_apos_timeout_transitorio(monkeypatch):
+    payload = {"results": [{"symbol": "VWRA11", "regularMarketPrice": 110.77}]}
+    calls = []
+
+    def fake_get(url, params, timeout):
+        calls.append(params)
+        if len(calls) < 2:
+            raise prices.requests.exceptions.ReadTimeout("read timeout")
+        return _FakeResponse(payload)
+
+    monkeypatch.setattr(prices.requests, "get", fake_get)
+    monkeypatch.setattr(prices.time, "sleep", lambda _seconds: None)
+
+    result = prices.fetch_prices(["VWRA11"], "token")
+
+    assert result == {"VWRA11": 110.77}
+    assert len(calls) == 2
+
+
+def test_fetch_prices_propaga_erro_apos_esgotar_tentativas(monkeypatch):
+    def fake_get(url, params, timeout):
+        raise prices.requests.exceptions.ReadTimeout("read timeout")
+
+    monkeypatch.setattr(prices.requests, "get", fake_get)
+    monkeypatch.setattr(prices.time, "sleep", lambda _seconds: None)
+
+    try:
+        prices.fetch_prices(["VWRA11"], "token")
+        assert False, "deveria ter levantado PriceFetchError"
+    except prices.PriceFetchError:
+        pass

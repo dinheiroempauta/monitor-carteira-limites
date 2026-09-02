@@ -10,11 +10,34 @@ normalmente — mas, no plano free, cada ticker é uma requisição separada
 """
 from __future__ import annotations
 
+import time
 from datetime import datetime, timezone
 
 import requests
 
 BRAPI_URL = "https://brapi.dev/api/quote/{ticker}"
+
+# A brapi.dev ocasionalmente demora para responder (read timeout) sob carga;
+# como cada ticker é uma requisição isolada, uma falha transitória em um
+# único ativo não deveria derrubar o monitor inteiro. Poucas tentativas com
+# backoff curto absorvem essas lentidões pontuais sem atrasar demais o job.
+MAX_ATTEMPTS = 3
+RETRY_BACKOFF_SECONDS = 5
+
+
+def _get_with_retry(url: str, params: dict) -> requests.Response:
+    last_exc: requests.RequestException | None = None
+    for attempt in range(1, MAX_ATTEMPTS + 1):
+        try:
+            response = requests.get(url, params=params, timeout=15)
+            response.raise_for_status()
+            return response
+        except requests.RequestException as exc:
+            last_exc = exc
+            if attempt < MAX_ATTEMPTS:
+                time.sleep(RETRY_BACKOFF_SECONDS * attempt)
+    assert last_exc is not None
+    raise last_exc
 
 
 class PriceFetchError(RuntimeError):
@@ -24,8 +47,7 @@ class PriceFetchError(RuntimeError):
 def _fetch_one(ticker: str, api_key: str) -> float:
     url = BRAPI_URL.format(ticker=ticker)
     try:
-        response = requests.get(url, params={"token": api_key}, timeout=15)
-        response.raise_for_status()
+        response = _get_with_retry(url, {"token": api_key})
         payload = response.json()
     except requests.RequestException as exc:
         raise PriceFetchError(f"Falha ao consultar a API brapi.dev para {ticker}: {exc}") from exc
@@ -53,12 +75,7 @@ def _fetch_one_historical(ticker: str, api_key: str, range_: str) -> dict[str, f
     cotação, sem custo extra de requisição)."""
     url = BRAPI_URL.format(ticker=ticker)
     try:
-        response = requests.get(
-            url,
-            params={"token": api_key, "range": range_, "interval": "1d"},
-            timeout=15,
-        )
-        response.raise_for_status()
+        response = _get_with_retry(url, {"token": api_key, "range": range_, "interval": "1d"})
         payload = response.json()
     except requests.RequestException as exc:
         raise PriceFetchError(f"Falha ao consultar histórico da brapi.dev para {ticker}: {exc}") from exc
