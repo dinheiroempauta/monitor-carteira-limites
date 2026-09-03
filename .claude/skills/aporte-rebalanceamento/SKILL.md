@@ -11,14 +11,28 @@ description: >
 # Aporte e rebalanceamento
 
 Existe também um caminho que não depende desta skill nem de nenhum
-agente: o próprio `monitor.yml` tem um campo `aporte` no
-`workflow_dispatch` (visível no site/app do GitHub em "Run workflow").
-Preenchido, um step dedicado (`scripts/calcular_aporte.py`) busca a
-cotação, roda `aporte_quotas_plan` e manda o resultado direto no
-Telegram — sem terminal, sem script local, sem assinatura de agente
-nenhuma. Essa skill continua valendo para quando o pedido chega aqui no
-chat (ex.: "/aporte-rebalanceamento, tenho R$X"), mas vale saber que o
-usuário tem essa alternativa e pode preferir usá-la no dia a dia.
+agente: o próprio `monitor_desvio.yml` (workflow "Monitoria de Desvio da
+Carteira") tem um campo `aporte` no `workflow_dispatch` (visível no
+site/app do GitHub em "Run workflow"). Preenchido, um step dedicado
+(`scripts/calcular_aporte.py`) busca a cotação, roda `aporte_quotas_plan`
+e manda o resultado direto no Telegram — sem terminal, sem script local,
+sem assinatura de agente nenhuma. Essa skill continua valendo para
+quando o pedido chega aqui no chat (ex.: "/aporte-rebalanceamento, tenho
+R$X"), mas vale saber que o usuário tem essa alternativa e pode preferir
+usá-la no dia a dia.
+
+**IMPORTANTE — sempre preencha o campo `aporte` no disparo, mesmo
+rodando a skill pelo chat.** O passo 1 abaixo dispara o mesmo
+`workflow_dispatch`; se o campo `aporte` for deixado vazio, o step
+"Calcular distribuição de aporte" (`scripts/calcular_aporte.py`) é
+pulado (`skipped`) e nada é mandado pro Telegram — só o cálculo local
+feito aqui no chat acontece. Como o usuário normalmente espera receber
+o aviso no Telegram também (é o "canal combinado" do projeto), o disparo
+do passo 1 deve **sempre** incluir `inputs: {"aporte": "<valor>"}` — isso
+não muda em nada a extração de preços do passo 1 (o step "Rodar monitor
+e notificar" roda do mesmo jeito antes), só garante que o Telegram
+também seja acionado na mesma execução, sem precisar disparar o workflow
+duas vezes.
 
 Processo determinístico em duas etapas — nunca faça a conta de cabeça ou
 por estimativa: os preços vêm de uma execução real do workflow, e a
@@ -37,10 +51,12 @@ buscou, e só então calcula localmente.
 
 1. Dispare o workflow:
    `mcp__github__actions_run_trigger` com `method: run_workflow`,
-   `workflow_id: monitor.yml`, `ref: main`, `owner`/`repo` do projeto.
+   `workflow_id: monitor_desvio.yml`, `ref: main`, `owner`/`repo` do
+   projeto, e `inputs: {"aporte": "<valor informado pelo usuário>"}`
+   (ver nota acima — sem isso o Telegram não é acionado).
 2. Espere ~15-20s e liste as execuções recentes
    (`mcp__github__actions_list`, `method: list_workflow_runs`,
-   `resource_id: monitor.yml`) até achar a que você disparou com
+   `resource_id: monitor_desvio.yml`) até achar a que você disparou com
    `status: completed`.
 3. Pegue o `job_id` dela (`mcp__github__actions_list`,
    `method: list_workflow_jobs`) e leia o log
